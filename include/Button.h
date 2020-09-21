@@ -22,6 +22,7 @@
 #ifndef _BUTTON_H
 #define _BUTTON_H 1
 
+#include <Arduino.h>
 #include "ButtonState.h"
 
 class Button {

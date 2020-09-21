@@ -114,18 +114,6 @@ typedef enum _Buttons {
     RightButton
 } Buttons;
 
-// Event types
-typedef enum _EventType {
-    None = -1,
-    WheelEvent = 0,
-    WheelButtonEvent,
-    MainButtonEvent,
-    LeftButtonEvent,
-    RightButtonEvent,
-    GpioEvent
-} EventType;
-
-
 class LeoNerdEncoder {
 public:
     LeoNerdEncoder(uint8_t address, int intPin = -1, void (*interruptHandler)(void) = NULL, void (*eventHandler)(LeoNerdEvent) = NULL, bool keyBeep = false);

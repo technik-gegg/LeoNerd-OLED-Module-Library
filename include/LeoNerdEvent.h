@@ -22,7 +22,20 @@
 #ifndef _LEONERD_EVENT_H
 #define _LEONERD_EVENT_H 1
 
+#include <Arduino.h>
 #include "ButtonState.h"
+
+// Event types
+typedef enum _EventType {
+    None = -1,
+    WheelEvent = 0,
+    WheelButtonEvent,
+    MainButtonEvent,
+    LeftButtonEvent,
+    RightButtonEvent,
+    GpioEvent
+} EventType;
+
 
 class LeoNerdEvent {
 public:
