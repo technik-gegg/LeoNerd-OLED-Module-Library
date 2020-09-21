@@ -35,6 +35,8 @@
 #include "Arduino.h"
 #include <Wire.h>
 #include "ButtonState.h"
+#include "Button.h"
+#include "LeoNerEvent.h"
 
 // Registers for I2C
 #define REG_EVENT               0x01    // Implements an 8-level deep FIFO of input events. Each event is formed of a single byte. 
@@ -123,43 +125,6 @@ typedef enum _EventType {
     GpioEvent
 } EventType;
 
-class LeoNerdEvent {
-public:
-    LeoNerdEvent() { EvtType = None; State = Open; Value = 0;}
-    LeoNerdEvent(EventType event, ButtonState state, uint8_t value = 0) { EvtType = event; State = state; Value = value; }
-    volatile EventType      EvtType;
-    volatile ButtonState    State;
-    volatile uint8_t        Value;
-};
-
-class Button {
-public:
-    Button() { _which = 0; _state = Open; }
-    Button(uint8_t which) { _which = which; _state = Open; _lastButtonPressed = 0L; _lastButtonReleased = 0L; _doubleClickEnabled = false; _clickCount = 0; }
-
-    void            setButtonState(ButtonState state) { _state = state; }
-    void            resetButtonState() { _state = Open; }
-    ButtonState     getButtonState() { return _state; }
-    void            setLastButtonPressed(unsigned long ticks) { _lastButtonPressed = ticks; }
-    void            setLastButtonReleased(unsigned long ticks) { _lastButtonReleased = ticks; }
-    unsigned long   getLastButtonPressed() { return _lastButtonPressed; }
-    unsigned long   getLastButtonReleased() { return _lastButtonReleased; }
-    void            setDoubleClickEnabled(bool enable) { _doubleClickEnabled = enable; }
-    bool            getDoubleClickEnabled() { return _doubleClickEnabled; }
-    void            incrementClickCount() { _clickCount++; }
-    void            resetClickCount() { _clickCount = 0; }
-    uint8_t         getClickCount() { return _clickCount; }
-    uint8_t         which() { return _which; }
-
-private:
-    volatile uint8_t         _which;
-    volatile ButtonState     _state;
-    unsigned long           _lastButtonPressed;
-    unsigned long           _lastButtonReleased;
-    volatile uint8_t        _doubleClickTicks;     
-    bool                    _doubleClickEnabled;  
-    volatile uint8_t        _clickCount;
-};
 
 class LeoNerdEncoder {
 public:

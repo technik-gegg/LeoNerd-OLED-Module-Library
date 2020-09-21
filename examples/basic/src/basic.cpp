@@ -18,6 +18,7 @@
  *
  */
 #include <Arduino.h>
+#include <Wire.h>
 #include "U8g2lib.h"
 #include "LeoNerdEncoder.h"
 
@@ -25,67 +26,119 @@
 #define ENCODER_ADDRESS     0x3D    // use the default address
 
 #define BASE_FONT           u8g2_font_6x12_t_symbols
-#define ICONIC_FONT         u8g2_font_open_iconic_check_2x_t
-#define SYMBOL_FONT         u8g2_font_unifont_t_symbols
+#define SMALL_FONT          u8g2_font_6x10_mr
 
 #define ArraySize(arr)    (sizeof(arr)/sizeof(arr[0]))
 
+// forward declaration to keep the compiler happy
+void setupDisplay();
+void setupEncoder();
+void draw();
+void drawStatus();
+void scanI2CDevices();
+const char* PROGMEM xlateBtn(ButtonState state);
+void __debug(const char* fmt, ...);
 
+// instances of display and encoder
 U8G2_SH1106_128X64_NONAME_F_HW_I2C  display(U8G2_R2, /* reset=*/ U8X8_PIN_NONE); 
 LeoNerdEncoder                      encoder(ENCODER_ADDRESS);
 
-ButtonState wheel, main, left, right;
+// runtime vars
+ButtonState wheelBtn,
+            mainBtn,
+            leftBtn,
+            rightBtn;
 int16_t     encoderPos = 0;
 
-void __debug(const char* fmt, ...) {
-    char _tmp[256];
-    va_list arguments;
-    va_start(arguments, fmt); 
-    vsnprintf_P(_tmp, ArraySize(_tmp)-1, fmt, arguments);
-    va_end (arguments); 
-    Serial.print(F("Debug: "));
-    Serial.println(_tmp); 
+void setup() {
+    Serial.begin(57600);
+    __debug(PSTR("[ Start ]"));
+    // must deliver (at least) 2 devices (0x3c and 0x3d)
+    scanI2CDevices();
+    setupDisplay();
+    setupEncoder();
+}
+
+void loop() {
+    
+    encoder.loop();
+    encoderPos += encoder.getValue();
+    wheelBtn   = encoder.getButton(WheelButton);
+    mainBtn    = encoder.getButton(MainButton);
+    leftBtn    = encoder.getButton(LeftButton);
+    rightBtn   = encoder.getButton(RightButton);
+    draw();
+    delay(250);
+}
+
+void draw() {
+    display.firstPage();
+    do {
+        drawStatus();
+    } while(display.nextPage());
 }
 
 void setupDisplay() {
     display.begin();
     display.enableUTF8Print();
     display.clearDisplay();
-    display.setFont(BASE_FONT);
-    display.setFontMode(0);
-    display.setDrawColor(1);
 }
 
 void setupEncoder() {
     encoder.begin();
     uint8_t ver = encoder.queryVersion();
-    __debug(PSTR("Encoder version is: %d"), ver);
+    __debug(PSTR("LeoNerd's encoder version is: %d"), ver);
 }
 
 void drawStatus() {
-    char tmp[60];
+    char tmp[40];
+    display.setFont(BASE_FONT);
     display.setFontMode(0);
     display.setDrawColor(1);
-    display.drawStr(display.getDisplayWidth() - display.getStrWidth(tmp) - 10, 14, tmp);
-    display.drawStr(display.getDisplayWidth() - display.getStrWidth(tmp) - 10, 14, tmp);
+    display.drawStr(4,  10, "WHEEL");
+    display.drawStr(99, 10, "MAIN");
+    display.drawStr(4,  52, "LEFT");
+    display.drawStr(92, 52, "RIGHT");
+    display.drawStr(42, 28, "POS:");
+    sprintf(tmp, "%d", encoderPos);
+    display.drawStr(68, 28, tmp);
+    display.setFont(SMALL_FONT);
+    sprintf_P(tmp, "%s", xlateBtn(wheelBtn));
+    display.drawStr(4,  23, tmp);
+    sprintf_P(tmp, "%s", xlateBtn(mainBtn));
+    display.drawStr(99, 23, tmp);
+    sprintf_P(tmp, "%s", xlateBtn(leftBtn));
+    display.drawStr(4,  40, tmp);
+    sprintf_P(tmp, "%s", xlateBtn(rightBtn));
+    display.drawStr(99, 40, tmp);
 }
 
-void setup() {
-    Serial.begin(57600);
-    setupDisplay();
-    setupEncoder();
+const char* PROGMEM xlateBtn(ButtonState state) {
+    switch(state) {
+        case Open:          return PSTR("None");
+        case Clicked:       return PSTR("Click");
+        case LongClicked:   return PSTR("LngClick");
+        default:            return PSTR("---");
+    }
 }
 
-void loop() {
-    encoder.loop();
-    encoderPos += encoder.getValue();
-    wheel   = encoder.getButton(WheelButton);
-    main    = encoder.getButton(MainButton);
-    left    = encoder.getButton(LeftButton);
-    right   = encoder.getButton(RightButton);
+void scanI2CDevices() {
+  Wire.begin();
+  for(uint8_t i2cAdr = 1; i2cAdr < 127; i2cAdr++)
+  {
+    Wire.beginTransmission(i2cAdr);
+    if (Wire.endTransmission() == 0) {
+      __debug(PSTR("I2C device found at address 0x%2x"), i2cAdr);
+    }
+  }
+}
 
-    display.firstPage();
-    do {
-        drawStatus();
-    } while(display.nextPage());
+void __debug(const char* fmt, ...) {
+    char _tmp[128];
+    va_list arguments;
+    va_start(arguments, fmt); 
+    vsnprintf_P(_tmp, ArraySize(_tmp)-1, fmt, arguments);
+    va_end (arguments); 
+    Serial.print(F("Debug: "));
+    Serial.println(_tmp); 
 }
