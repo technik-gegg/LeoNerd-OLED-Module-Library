@@ -1,9 +1,14 @@
 # LeoNerd-OLED-Module-Library
 
-This is a standalone library for LeoNerd's [OLED Front Panel Module](https://www.tindie.com/products/leonerd/oled-front-panel-module/) for Arduino.
-This nice little module comes with all the components needed for sophisticated Input/Output in your DIY projects by utilizing the I2C interface. This requires only 4 wires (**VCC**, **GND**, **SCL**, **SDA**) to connect with and to establish a communication with decent speed.
+This is a standalone library for LeoNerd's [OLED Front Panel Module](https://www.tindie.com/products/leonerd/oled-front-panel-module/) for Arduino projects.
+![Image](https://cdn.tindiemedia.com/images/resize/vT8K8YJx4fqYTFgQj5vLBKUB6yM=/p/full-fit-in/2400x1600/i/46252/products/2019-02-09T14%3A52%3A38.181Z-IMG_6938.jpg)
 
-This library combines the handling of the I2C encoder, buttons, LEDs and buzzer, as well as the [U8G2 library from Oliver Kraus](https://github.com/olikraus/u8g2) for putting data onto the SH1106 OLED display.
+This nice little module from designer **Paul "LeoNerd" Evans** comes with all the components needed for sophisticated Input/Output in your DIY projects by utilizing the I2C interface. This requires only 4 wires (**VCC**, **GND**, **SCL**, **SDA**) to connect with and to establish a communication with decent speed.
+
+This library is a simple wrapper for the I2C commands used to communicate with the device and which are described in the [datatsheet](https://d3s5r33r268y59.cloudfront.net/datasheets/16167/2020-09-09-16-08-39/driver.pdf) of the module.
+It combines the handling of the I2C encoder, buttons, LEDs and buzzer, as well as the [U8G2 library from Oliver Kraus](https://github.com/olikraus/u8g2) for putting data onto the SH1106 OLED display.
+
+## Basic usage
 
 To use this library in your Arduino project, simply place a link to this github repository into your platformio.ini's *lib_deps*, i.e.:
 
@@ -15,7 +20,7 @@ lib_deps =  ...
 
 The "basic" sample in the examples folder will show you how to use this library.
 
-## Usage In A Nutshell
+### Usage In A Nutshell
 
 You have to create two object instances:
 
@@ -90,7 +95,9 @@ void setGPIO(uint8_t which, bool state);
 bool getGPIO(uint8_t which);
 ```
 
-## Please notice
+### Please notice
 
-If this module is the only one connected to your **I2C bus**, you have to terminate the bus by adding a 2.2K - 4.7K pull-up resistor to the **SDA** as well as the **SCL** lines.
-If you have another I2C device connected to your MCU, which comes with such pull-ups already applied to SDA/SCL, you can skip this.
+The I2C bus of this device is not terminated!
+This means: If this module is the only I2C device on your bus, you have to terminate the bus by adding a **2.2K - 4.7K** pull-up resistor to the **SDA** as well as the **SCL** line.
+
+If you have another I2C device connected to your MCU which comes with such pull-ups already applied to SDA/SCL, you **must not** add another set of resistors.
