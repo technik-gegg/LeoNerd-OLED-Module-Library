@@ -3,10 +3,10 @@
 This is a standalone library for LeoNerd's [OLED Front Panel Module](https://www.tindie.com/products/leonerd/oled-front-panel-module/) for Arduino projects.
 ![Image](https://cdn.tindiemedia.com/images/resize/vT8K8YJx4fqYTFgQj5vLBKUB6yM=/p/full-fit-in/2400x1600/i/46252/products/2019-02-09T14%3A52%3A38.181Z-IMG_6938.jpg)
 
-This nice little module from designer **Paul "LeoNerd" Evans** comes with all the components needed for sophisticated Input/Output in your DIY projects by utilizing the I2C interface. This requires only 4 wires (**VCC**, **GND**, **SCL**, **SDA**) to connect with and to establish a communication with decent speed.
+This nice little module from designer **Paul "LeoNerd" Evans** comes with all the components needed for sophisticated Input/Output in your DIY projects by utilizing the I2C interface. This requires only 4 wires (**VCC**, **GND**, **SCL**, **SDA**) to connect it and to establish a communication with a decent speed.
 
-This library is a simple wrapper for the I2C commands used to communicate with the device and which are described in the [datatsheet](https://d3s5r33r268y59.cloudfront.net/datasheets/16167/2020-09-09-16-08-39/driver.pdf) of the module.
-It combines the handling of the I2C encoder, buttons, LEDs and buzzer, as well as the [U8G2 library from Oliver Kraus](https://github.com/olikraus/u8g2) for putting data onto the SH1106 OLED display.
+This library is a simple wrapper for the I2C commands used to communicate with the device and which are described in detail in the [datasheet](https://d3s5r33r268y59.cloudfront.net/datasheets/16167/2020-09-09-16-08-39/driver.pdf) of the module.
+It takes care of the handling of the I2C encoder, buttons, LEDs and buzzer, as well as the [U8G2 library from Oliver Kraus](https://github.com/olikraus/u8g2) for putting data onto the SH1106 OLED display.
 
 ## Basic usage
 
