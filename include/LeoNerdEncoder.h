@@ -27,13 +27,13 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
-#include <Wire.h>
 #endif
-#include "Arduino.h"
 #if defined (__STM32F1__)
 #include <wirish.h>
 #include <libmaple/gpio.h>
 #endif
+#include "Arduino.h"
+#include <Wire.h>
 #include "ButtonState.h"
 
 // Registers for I2C
@@ -134,7 +134,8 @@ public:
 
 class Button {
 public:
-    Button(uint8_t which) { _which = which; _state = Open; _lastButtonPressed = 0L; _lastButtonReleased = 0L; _doubleClickEnabled = false; }
+    Button() { _which = 0; _state = Open; }
+    Button(uint8_t which) { _which = which; _state = Open; _lastButtonPressed = 0L; _lastButtonReleased = 0L; _doubleClickEnabled = false; _clickCount = 0; }
 
     void            setButtonState(ButtonState state) { _state = state; }
     void            resetButtonState() { _state = Open; }
@@ -153,11 +154,11 @@ public:
 private:
     volatile uint8_t         _which;
     volatile ButtonState     _state;
-    unsigned long           _lastButtonPressed = 0;
-    unsigned long           _lastButtonReleased = 0;
-    volatile uint8_t        _doubleClickTicks = 0;     
+    unsigned long           _lastButtonPressed;
+    unsigned long           _lastButtonReleased;
+    volatile uint8_t        _doubleClickTicks;     
     bool                    _doubleClickEnabled;  
-    volatile uint8_t        _clickCount = 0;
+    volatile uint8_t        _clickCount;
 };
 
 class LeoNerdEncoder {
@@ -229,17 +230,17 @@ private:
     void            (*_interruptHandler)(void);
 
     uint8_t         _address;
-    Button          _encoderButton = Button(WheelButton);
-    Button          _mainButton = Button(MainButton);
-    Button          _leftButton = Button(LeftButton);
-    Button          _rightButton = Button(RightButton);
-    uint8_t         _maxBrightness = 255;
-    uint8_t         _gpioDir = 0;
-    uint8_t         _gpioVal = 0;
+    Button          _encoderButton;
+    Button          _mainButton;
+    Button          _leftButton;
+    Button          _rightButton;
+    uint8_t         _maxBrightness;
+    uint8_t         _gpioDir;
+    uint8_t         _gpioVal;
     uint8_t         _leds[MAX_LEDS];
-    volatile int16_t _wheelPos = 0;
-    uint8_t         _intPin = -1;
-    bool            _accelEnabled = false;
-    volatile bool   _isBusy = false;
+    volatile int16_t _wheelPos;
+    int8_t          _intPin;
+    bool            _accelEnabled;
+    volatile bool   _isBusy;
 };
 #endif

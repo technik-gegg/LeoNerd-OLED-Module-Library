@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-#include "../include/LeoNerdEncoder.h"
+#include "LeoNerdEncoder.h"
 
 
 LeoNerdEncoder::LeoNerdEncoder(uint8_t address, int intPin, void (*interruptHandler)(void), void (*eventHandler)(LeoNerdEvent), bool keyBeep) {
@@ -32,6 +32,16 @@ LeoNerdEncoder::LeoNerdEncoder(uint8_t address, int intPin, void (*interruptHand
     }
     _interruptHandler = interruptHandler;
     _eventHandler = eventHandler;
+    _encoderButton = Button(WheelButton);
+    _mainButton = Button(MainButton);
+    _leftButton = Button(LeftButton);
+    _rightButton = Button(RightButton);
+    _maxBrightness = 255;
+    _gpioDir = 0;
+    _gpioVal = 0;
+    _wheelPos = 0;
+    _accelEnabled = false;
+    _isBusy = false;
 }
 
 /**
@@ -81,7 +91,6 @@ void LeoNerdEncoder::loop() {
  * Main routine for reading the events coming from the encoder
  */
 void LeoNerdEncoder::service() {
-    uint8_t data = 0;
     uint8_t buf[MAX_BUFFER];
     if(_isBusy)
         return;
@@ -144,8 +153,7 @@ void LeoNerdEncoder::setButtonEvent(Button* instance, ButtonState state) {
  * @param data      the event received
  */
 void LeoNerdEncoder::parseEvent(uint8_t data) {
-    unsigned long now = millis();
-    
+
     switch(data) {
         case EVENT_NONE:
             _wheelPos = 0;
@@ -761,17 +769,17 @@ uint8_t LeoNerdEncoder::queryVersion() {
  * @returns the number of bytes received from FIFO; buffer gets filled accordingly
  */
 uint8_t LeoNerdEncoder::queryRegister(uint8_t reg, uint8_t* buffer, uint8_t size) {
-    uint8 stat = 0;
+    uint8_t stat = 0;
     do {
         Wire.beginTransmission(_address);
         Wire.write(reg);
         stat = Wire.endTransmission();
     } while(stat > 1);
-    if(stat == SUCCESS) {
-        uint8 cnt = Wire.requestFrom(_address, size);
+    if(stat == 0) {
+        uint8_t cnt = Wire.requestFrom(_address, size);
         while(!Wire.available())
             delayMicroseconds(10);
-        int ndx = 0;
+        uint8_t ndx = 0;
         while(ndx < cnt) {
             uint8_t response = Wire.read();
             if(ndx < size)
@@ -790,13 +798,13 @@ uint8_t LeoNerdEncoder::queryRegister(uint8_t reg, uint8_t* buffer, uint8_t size
  * @returns the response read
  */
 uint8_t LeoNerdEncoder::queryRegister(uint8_t reg) {
-    uint8 stat = 0;
+    uint8_t stat = 0;
     do {
         Wire.beginTransmission(_address);
         Wire.write(reg);
         stat = Wire.endTransmission();
     } while(stat > 1);
-    Wire.requestFrom(_address, 1);
+    Wire.requestFrom(_address, (uint8_t)1);
     while(!Wire.available())
         delayMicroseconds(10);
     return Wire.read();
