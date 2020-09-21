@@ -36,7 +36,7 @@
 #include <Wire.h>
 #include "ButtonState.h"
 #include "Button.h"
-#include "LeoNerEvent.h"
+#include "LeoNerdEvent.h"
 
 // Registers for I2C
 #define REG_EVENT               0x01    // Implements an 8-level deep FIFO of input events. Each event is formed of a single byte. 

@@ -53,7 +53,7 @@ int16_t     encoderPos = 0;
 void setup() {
     Serial.begin(57600);
     __debug(PSTR("[ Start ]"));
-    // must deliver (at least) 2 devices (0x3c and 0x3d)
+    // must show (at least) 2 devices (0x3c and 0x3d)
     scanI2CDevices();
     setupDisplay();
     setupEncoder();
