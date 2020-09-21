@@ -1,0 +1,37 @@
+{
+    "name": "LeoNerd-OLED-Module-Library",
+    "version": "1.0.0",
+    "description": "A library for the LeoNerd's OLED Module Panel for MCU's such as Arduino.",
+    "keywords": "LeoNerd, OLED, Encoder, Arduino",
+    "repository":
+    {
+      "type": "git",
+      "url": "https://github.com/technik-gegg/LeoNerd-OLED-Module-Library"
+    },
+    "authors":
+    [
+      {
+        "name": "Technik Gegg",
+        "email": "technik.gegg@gmail.com",
+        "url": "",
+        "maintainer": true
+      }
+    ],
+    "license": "GPL V3",
+    "homepage": "https://github.com/technik-gegg/LeoNerd-OLED-Module-Library",
+    "dependencies": {
+      "olikraus/U8g2": "~2.28.6"
+    },
+    "frameworks": "Arduino",
+    "platforms": [ "atmelavr, ststm32" ],
+    "examples": [
+        {
+            "name": "Basic",
+            "base": "examples/basic",
+            "files": [
+                "platformio.ini",
+                "src/basic.cpp"
+            ]
+        }
+    ]
+  }
