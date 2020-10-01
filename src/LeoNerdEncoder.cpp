@@ -26,8 +26,8 @@ LeoNerdEncoder::LeoNerdEncoder(uint8_t address, int intPin, void (*interruptHand
     if(keyBeep) {
         setKeyBeep(330, 100);
     }
+    _intPin = intPin;
     if(intPin != -1) {
-        _intPin = intPin;
         pinMode(intPin, INPUT_PULLUP);
     }
     _interruptHandler = interruptHandler;
