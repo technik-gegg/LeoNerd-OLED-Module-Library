@@ -157,10 +157,6 @@ void LeoNerdEncoder::parseEvent(uint8_t data) {
     switch(data) {
         case EVENT_NONE:
             _wheelPos = 0;
-            setButtonEvent(&_encoderButton, Open);
-            setButtonEvent(&_mainButton, Open);
-            setButtonEvent(&_leftButton, Open);
-            setButtonEvent(&_rightButton, Open);
             break;
         case EVENT_WHEEL_DOWN:
             _wheelPos--;
