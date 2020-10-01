@@ -536,6 +536,25 @@ void LeoNerdEncoder::setButtonReleaseMask(uint8_t mask) {
 }
 
 /**
+ * Enable the EEPROM for writing
+ * 
+ * This is a security measure to avoid accidentally overwriting the 
+ * EEPROM if there're some unwanted signals on the I2C bus.
+ * This method is called for each setEepromValue() operation.
+ */
+void LeoNerdEncoder::unlockEepromWrite() {
+    Wire.beginTransmission(_address);
+    Wire.write(REG_EEPROM_UNLOCK);
+    Wire.write(0x12);
+    Wire.endTransmission();
+
+    Wire.beginTransmission(_address);
+    Wire.write(REG_EEPROM_UNLOCK);
+    Wire.write(0x34);
+    Wire.endTransmission();
+}
+
+/**
  * Set EEPROM value
  * 
  * Be careful with this method and know what you're doing! 
@@ -547,6 +566,7 @@ void LeoNerdEncoder::setButtonReleaseMask(uint8_t mask) {
 void LeoNerdEncoder::setEepromValue(uint8_t eep_adr, uint8_t value) {
     if(eep_adr >= REG_EEPROM && eep_adr <= REG_EEPROM_BTN_POLARITY) {
         waitBusy();
+        unlockEepromWrite();
         Wire.beginTransmission(_address);
         Wire.write(eep_adr);
         Wire.write(value);

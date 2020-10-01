@@ -55,6 +55,7 @@
 #define REG_GPIO_IO             0x31    // Sets the output state for any GPIO line currently set as output
 #define REG_GPIO_PULLUP         0x32    // Enables pullup resistors on any of the GPIO lines with bits set high (1)
 #define REG_GPIO_EVENTMASK      0x33    // Sets a mask used for level change event detection on the GPIO lines
+#define REG_EEPROM_UNLOCK       0xBF    // Virtual register to enable write operations on EEPROM (new for latest version)
 #define REG_EEPROM              0xC0    // EEPROM storage for encoder I2C address (default: 0x3d)
 #define REG_EEPROM_OPTIONS      0xC1    // EEPROM storage for misc. options (default: 0x00)
 #define REG_EEPROM_DEBOUNCE     0xC2    // EEPROM storage for debounce time (default: 0x14)
@@ -178,6 +179,7 @@ private:
     void            setButtonEvent(Button* instance, ButtonState state);
     uint8_t         queryRegister(uint8_t reg, uint8_t* buffer, uint8_t size);
     uint8_t         queryRegister(uint8_t reg);
+    void            unlockEepromWrite();
     void            waitBusy(void) { while(_isBusy); };
     void            (*_eventHandler)(LeoNerdEvent);
     void            (*_interruptHandler)(void);

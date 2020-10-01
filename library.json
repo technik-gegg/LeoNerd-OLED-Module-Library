@@ -1,6 +1,6 @@
 {
     "name": "LeoNerd-OLED-Module-Library",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "A library for the LeoNerd's OLED Module Panel for MCU's such as Arduino.",
     "keywords": "LeoNerd, OLED, Encoder, Arduino",
     "repository":
