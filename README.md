@@ -24,7 +24,7 @@ The "basic" sample in the examples folder will show you how to use this library.
 
 You have to create two object instances:
 
-+ one for the U8G2 library
++ one for the U8G2 library (or any other library which supports an SH1106 I2C OLED display)
 + one for the LeoNerdEncoder library
 
 I.e., by using these global instance variables:
@@ -45,6 +45,7 @@ void setup() {
     display.begin();
     encoder.begin();
     ...
+}
 ```
 
 In the master *loop()* of your program call the **encoder.loop()** first, then read out button states and encoder value and react accordingly.
@@ -66,6 +67,7 @@ void loop() {
         ...
     }
     ...
+}
 ```
 
 For sending data to the display, use the well known methods of the **U8G2 library**, [as explained here](https://github.com/olikraus/u8g2/wiki/u8g2reference). The simplest one is:
