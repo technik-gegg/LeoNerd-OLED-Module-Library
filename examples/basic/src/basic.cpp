@@ -28,7 +28,7 @@
 
 // Fonts used in this program.
 // Be aware that each font used will reduce the amount of
-// available Flasch memory!
+// available Flash memory!
 #define BASE_FONT           u8g2_font_6x12_t_symbols
 #define SMALL_FONT          u8g2_font_6x10_mr
 
