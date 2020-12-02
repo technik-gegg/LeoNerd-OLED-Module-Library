@@ -62,7 +62,13 @@
 #define REG_EEPROM_HOLDTIME     0xC3    // EEPROM storage for hold time (default: 0x4b)
 #define REG_EEPROM_BTN_MAPPING  0xC4    // EEPROM storage for mapping button to GPIO (default: 0x00; 0x04 for SMuFF)
 #define REG_EEPROM_BTN_POLARITY 0xC5    // EEPROM storage for mapping button to GPIO polarity (default: 0x00; 0x04 for SMuFF)
+#define REG_EEPROM_ACCELERATION 0xC6    // EEPROM storage for accelaration on encoder wheel (default: 0x25) (GMagican FW only)
+#define REG_EEPROM_DECELERATION 0xC7    // EEPROM storage for deceleration on encoder wheel (default: 0x02) (GMagican FW only)
 #define REG_SW_VERSION          0xF0    // Reports the current firmware version (default: 0x02)
+
+// Options Mask
+#define OPTION_ACCELERATION     0x01    // 1 = enable / 0 = disable encoder wheel acceleration (GMagican only)
+#define OPTION_INVERT_WHEEL     0x80    // 1 = invert encoder wheel direction  / 0 = default direction
 
 // Release Mask 
 #define EVENT_RELEASE_IGNORE    0x01 
@@ -169,10 +175,13 @@ public:
     uint8_t         queryGpioPullup(void);
     uint8_t         queryGpioEventMask(void);
     uint8_t         queryEncoderAddress(void);
+    uint8_t         queryOptions(void);
     uint8_t         queryDebounceTime(void);
     uint8_t         queryHoldTime(void);
     uint8_t         queryButtonMapping(Buttons button);
     uint8_t         queryButtonMappingPolarity(Buttons button);
+    uint8_t         queryWheelAcceleration();
+    uint8_t         queryWheelDeceleration();
     uint8_t         queryVersion(void);
 
 private:

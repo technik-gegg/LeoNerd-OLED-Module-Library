@@ -17,9 +17,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+ 
+ /*
+  * Please notice: Even though this example has been written and compiled
+  * for the Arduino Nano, it won't leave much storage left for anything else
+  * than that.
+  * If you really need such expensive interface, you should be probably using 
+  * a beefier MCU, such as the ATMEGA2560.
+  */
+  
 // Basic includes
 #include <Arduino.h>
-#include <Wire.h>
 #include "U8g2lib.h"
 #include "LeoNerdEncoder.h"
 
@@ -43,9 +51,11 @@ void        drawStatus();
 void        scanI2CDevices();
 const char* PROGMEM xlateBtn(ButtonState state);
 void        __debug(const char* fmt, ...);
+void        playTune();
 
 // Runtime instances for display and encoder
 LeoNerdEncoder                      encoder(ENCODER_ADDRESS);
+
 // For the display we're using the famous U8G2 library because of the already 
 // integrated support for SH1106 but you're free to use any other library
 // that supports this display type.
@@ -57,7 +67,18 @@ ButtonState wheelBtn,
             mainBtn,
             leftBtn,
             rightBtn;
-int16_t     encoderPos = 0;
+int16_t     encoderPos = 0, lastEncoderPos = 0;
+
+const uint16_t tune[] PROGMEM = {
+  // Frequency, Duration, Pause
+  1760,  90,  90,
+  1975,  90,  90,
+  2093,  90,  90,
+  1975,  90,  90,
+  1760, 200,  50,
+     0,   0,   0
+};
+
 
 // set everything up
 void setup() {
@@ -75,32 +96,45 @@ void setup() {
     // enable encoder wheel to beep on rotation only
     encoder.setKeyBeep(1400, 10);
     encoder.setKeyBeepMask(BEEP_WHEEL_ROTATION);
+    draw();
 }
 
 void loop() {
     // service the encoder status (must be called from within this loop!)
     encoder.loop();
     // read the wheel position and store it
-    encoderPos += encoder.getValue();
+    int8_t v = encoder.getValue();
+    //__debug(PSTR("Enc: %d"),v);
+    encoderPos += v;
     // read the status of each button and stor it
     wheelBtn   = encoder.getButton(WheelButton);
     mainBtn    = encoder.getButton(MainButton);
     leftBtn    = encoder.getButton(LeftButton);
-    rightBtn   = encoder.getButton(RightButton);
-    // draw button states and encoder position on the display
-    draw();
-    // set LEDs of Main button to off when wheel position = 0
-    if(encoderPos == 0) {
-        encoder.setLED(LED_GREEN, false);
-        encoder.setLED(LED_RED, false);
+    // right button plays a tune if held
+    if((rightBtn = encoder.getButton(RightButton)) == LongClicked)
+      playTune();
+    
+    // if the encoder has been turned
+    if(encoderPos != lastEncoderPos) {
+      lastEncoderPos = encoderPos;
+      draw();
+      // set LEDs of Main button to off when wheel position = 0
+      if(encoderPos == 0) {
+          encoder.setLED(LED_GREEN, false);
+          encoder.setLED(LED_RED, false);
+      }
+      // turn green LED on if wheel position is positive 
+      if(encoderPos > 0) {
+          encoder.setLED(LED_GREEN, true);
+      }
+      // turn red LED on if wheel position is negative 
+      if(encoderPos < 0) {
+          encoder.setLED(LED_RED, true);
+      }
     }
-    // turn green LED on if wheel position is positive 
-    if(encoderPos > 0) {
-        encoder.setLED(LED_GREEN, true);
-    }
-    // turn red LED on if wheel position is negative 
-    if(encoderPos < 0) {
-        encoder.setLED(LED_RED, true);
+    if(wheelBtn != Open || mainBtn != Open || leftBtn != Open || rightBtn != Open) { 
+      // draw button states and encoder position on the display
+      draw();
     }
 }
 
@@ -125,11 +159,14 @@ void setupEncoder() {
     uint8_t ver = encoder.queryVersion();
     // Please notice: This library needs at least version 2!
     __debug(PSTR("LeoNerd's encoder version is: %d"), ver);
+    // check the options 
+    uint8_t opt = encoder.queryOptions();
+    __debug(PSTR("Options set: 0x%02X"), opt);
 }
 
 // modify this routine to meet your needs
 void drawStatus() {
-    char tmp[40];
+    char tmp[20];
     display.setFont(BASE_FONT);
     display.setFontMode(0);
     display.setDrawColor(1);
@@ -153,7 +190,7 @@ const char* PROGMEM xlateBtn(ButtonState state) {
         case Open:          return PSTR("None");
         case Clicked:       return PSTR("Click");
         case LongClicked:   return PSTR("Hold");
-        default:            return "";
+        default:            return PSTR("");
     }
 }
 
@@ -171,9 +208,29 @@ void scanI2CDevices() {
   }
 }
 
+// Function that plays a tune (melody)
+void playTune() {
+  uint16_t f=0, d=0, p=0;
+  uint8_t n=0;
+    
+  while(1) {
+    f = pgm_read_word((tune+(n*3)));
+    d = pgm_read_word((tune+(n*3))+1);
+    p = pgm_read_word((tune+(n*3))+2);
+    n++;
+    if(f==0 && d==0)  // end of tune condition
+      break;
+    // if frequency and duration are set, play the tone
+    if(f && d) {
+      encoder.playFrequency(f, d);
+      delay(p ? p : d);
+    }
+  }
+}
+
 // Function used to print out formatted debug information
 void __debug(const char* fmt, ...) {
-    char _tmp[128];
+    char _tmp[60];
     va_list arguments;
     va_start(arguments, fmt); 
     vsnprintf_P(_tmp, ArraySize(_tmp)-1, fmt, arguments);

@@ -154,17 +154,30 @@ void LeoNerdEncoder::setButtonEvent(Button* instance, ButtonState state) {
  */
 void LeoNerdEncoder::parseEvent(uint8_t data) {
 
+    // special handling for encoder wheel acceleration as implemented 
+    // in GMagicans firmware
+    uint8_t steps = 1;
+    if(data > 0x20 && data < 0x3F) {
+        steps = ((data & 0x1C) >> 2)+1;
+	    data &= 0x23;
+    }
+    uint8_t gpio = 0;
+    if(data >= 0x60 && data <= 0x6F) {
+        gpio = (data & 0x0f);
+	    data &= 0x60;
+    }
+
     switch(data) {
         case EVENT_NONE:
             _wheelPos = 0;
             break;
         case EVENT_WHEEL_DOWN:
-            _wheelPos--;
+            _wheelPos -= steps;
             if(_eventHandler != NULL)
                 _eventHandler(LeoNerdEvent(WheelEvent, LeftTurn));
             break;
         case EVENT_WHEEL_UP:
-            _wheelPos++;
+            _wheelPos += steps;
             if(_eventHandler != NULL)
                 _eventHandler(LeoNerdEvent(WheelEvent, RightTurn));
             break;
@@ -205,7 +218,7 @@ void LeoNerdEncoder::parseEvent(uint8_t data) {
             setButtonEvent(&_rightButton, Held);
             break;
         case EVENT_GPIO_CHANGE:
-            _gpioVal = data & 0x0f;
+            _gpioVal = gpio;
             if(_eventHandler != NULL)
                 _eventHandler(LeoNerdEvent(GpioEvent, Open, _gpioVal));
             break;
@@ -692,6 +705,16 @@ uint8_t LeoNerdEncoder::queryEncoderAddress() {
 }
 
 /**
+ * Read the OPTIONS register 
+ * 
+ * @returns the options as set in EEPROM
+ */
+uint8_t LeoNerdEncoder::queryOptions() {
+    waitBusy();
+    return queryRegister(REG_EEPROM_OPTIONS);
+}
+
+/**
  * Read the DEBOUNCE TIME 
  * 
  * @returns the default time
@@ -765,6 +788,25 @@ uint8_t LeoNerdEncoder::queryButtonMappingPolarity(Buttons button) {
     return stat;
 }
 
+/**
+ * Read the WHEEL ACCELERATION time 
+ * 
+ * @returns the default time in ms
+ */
+uint8_t LeoNerdEncoder::queryWheelAcceleration() {
+    waitBusy();
+    return queryRegister(REG_EEPROM_ACCELERATION);
+}
+
+/**
+ * Read the WHEEL DECELERATION time 
+ * 
+ * @returns the default time in ms
+ */
+uint8_t LeoNerdEncoder::queryWheelDeceleration() {
+    waitBusy();
+    return queryRegister(REG_EEPROM_DECELERATION);
+}
 
 /**
  * Read the VERSION info

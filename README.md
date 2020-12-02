@@ -103,3 +103,9 @@ The I2C bus of this device is not terminated!
 This means: If this module is the only I2C device on your bus, you have to terminate the bus by adding a **2.2K - 4.7K** pull-up resistor to the **SDA** as well as the **SCL** line.
 
 If you have another I2C device connected to your MCU which comes with such pull-ups already applied to SDA/SCL, you **must not** add another set of resistors.
+
+## Change History
+
++ added queryOptions() method to read out the Options register
++ added encoder wheel acceleration handling as used in GMagicans alternative firmware version
++ updated basic example (added playing tune, decreased the memory footprint)
