@@ -50,7 +50,9 @@ LeoNerdEncoder::LeoNerdEncoder(uint8_t address, int intPin, void (*interruptHand
 LeoNerdEncoder::~LeoNerdEncoder() {
     if(_intPin != -1)
         detachInterrupt(_intPin);
+    #if !defined(__ESP32__)
     Wire.end();
+    #endif
 }
 
 /**

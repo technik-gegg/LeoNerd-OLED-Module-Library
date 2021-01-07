@@ -109,3 +109,4 @@ If you have another I2C device connected to your MCU which comes with such pull-
 + added queryOptions() method to read out the Options register
 + added encoder wheel acceleration handling as used in GMagicans alternative firmware version
 + updated basic example (added playing tune, decreased the memory footprint)
++ added conditional compiling for ESP32 since *Wire.end()* is unknown to the framework
