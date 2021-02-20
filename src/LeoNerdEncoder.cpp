@@ -1,6 +1,6 @@
 /**
  * Library for LeoNerd's OLED Module
- * 
+ *
  * Copyright (C) 2020 Technik Gegg
  *
  * This program is free software: you can redistribute it and/or modify
@@ -22,7 +22,7 @@
 
 LeoNerdEncoder::LeoNerdEncoder(uint8_t address, int intPin, void (*interruptHandler)(void), void (*eventHandler)(LeoNerdEvent), bool keyBeep) {
     _address = address;
-    
+
     if(keyBeep) {
         setKeyBeep(330, 100);
     }
@@ -50,7 +50,7 @@ LeoNerdEncoder::LeoNerdEncoder(uint8_t address, int intPin, void (*interruptHand
 LeoNerdEncoder::~LeoNerdEncoder() {
     if(_intPin != -1)
         detachInterrupt(_intPin);
-    #if !defined(__ESP32__)
+    #if !defined(__ESP32__) && !defined(ESP8266)
     Wire.end();
     #endif
 }
@@ -77,7 +77,7 @@ void LeoNerdEncoder::flushFifo() {
     if(_intPin != -1) {
         while(digitalRead(_intPin) == LOW) {
             queryRegister(REG_EVENT);
-        } 
+        }
     }
 }
 
@@ -114,9 +114,9 @@ void LeoNerdEncoder::service() {
 
 /**
  * Set the button state according to the event received
- * 
+ *
  * @param instance      the button instance
- * @param state         the new button state @see ButtonState  
+ * @param state         the new button state @see ButtonState
  */
 void LeoNerdEncoder::setButtonEvent(Button* instance, ButtonState state) {
     unsigned long now = millis();
@@ -151,12 +151,12 @@ void LeoNerdEncoder::setButtonEvent(Button* instance, ButtonState state) {
 
 /**
  * Parse the event and act sccordingly
- * 
+ *
  * @param data      the event received
  */
 void LeoNerdEncoder::parseEvent(uint8_t data) {
 
-    // special handling for encoder wheel acceleration as implemented 
+    // special handling for encoder wheel acceleration as implemented
     // in GMagicans firmware
     uint8_t steps = 1;
     if(data > 0x20 && data < 0x3F) {
@@ -272,7 +272,7 @@ void LeoNerdEncoder::parseData(uint8_t reg, uint8_t data) {
 
 /**
  * Enables/Disables the double click feature on button
- * 
+ *
  * @param enabled       the enabled state
  * @param which         the button
  *
@@ -288,7 +288,7 @@ void LeoNerdEncoder::setDoubleClickEnabled(bool enabled, uint8_t which) {
 
 /**
  * Get the state of the button
- * 
+ *
  * @param which     the button @see Button
  * @returns the current @see ButtonState
  */
@@ -296,10 +296,10 @@ ButtonState LeoNerdEncoder::getButton(uint8_t which) {
     ButtonState state;
     switch(which) {
         case WheelButton:
-            state = _encoderButton.getButtonState(); 
+            state = _encoderButton.getButtonState();
             break;
         case MainButton:
-            state = _mainButton.getButtonState();    
+            state = _mainButton.getButtonState();
             break;
         case LeftButton:
             state = _leftButton.getButtonState();
@@ -310,13 +310,13 @@ ButtonState LeoNerdEncoder::getButton(uint8_t which) {
         default: state = Open;
     }
     if(state != Pressed)
-        resetButton(which);   
+        resetButton(which);
     return state;
 }
 
 /**
  * Resets the state of the button
- * 
+ *
  * @param which     the button to reset @see Buttons
  */
 void LeoNerdEncoder::resetButton(uint8_t which) {
@@ -340,7 +340,7 @@ void LeoNerdEncoder::resetButtons() {
 
 /**
  * Switch the given LED on or off
- * 
+ *
  * @param which     number of the LED 1 or 2
  * @param state     true (on) / false (off)
  */
@@ -357,7 +357,7 @@ void LeoNerdEncoder::setLED(uint8_t which, bool state) {
 
 /**
  * Toggle the given LED on or off
- * 
+ *
  * @param which     number of the LED 1 or 2
  * @param state     true (on) / false (off)
  */
@@ -374,7 +374,7 @@ void LeoNerdEncoder::toggleLED(uint8_t which) {
 
 /**
  * Set the given GPIO pin to either INPUT or OUTPUT
- * 
+ *
  * @param which     number of the GPIO pin (0-3)
  * @param mode      INPUT or OUTPUT
  */
@@ -394,7 +394,7 @@ void LeoNerdEncoder::setGPIOMode(uint8_t which, int mode)
 
 /**
  * Set the given GPIO pin state
- * 
+ *
  * @param which     number of the GPIO pin (0-3)
  * @param state     true (HIGH) / false (LOW)
  */
@@ -409,7 +409,7 @@ void LeoNerdEncoder::setGPIO(uint8_t which, bool state){
 
 /**
  * Get the given GPIO pin state
- * 
+ *
  * @param which     number of the GPIO pin (0-3)
  * @returns true for HIGH, false for LOW
  */
@@ -418,11 +418,11 @@ bool LeoNerdEncoder::getGPIO(uint8_t which) {
 }
 
 /**
- * Play a tone 
- * 
+ * Play a tone
+ *
  * @param frequency     the tone frequency
  * @param duration      the tone duration in milliseconds
- * 
+ *
  */
 void LeoNerdEncoder::playTone(int frequency, int duration) {
     waitBusy();
@@ -438,11 +438,11 @@ void LeoNerdEncoder::playTone(int frequency, int duration) {
 }
 
 /**
- * Play a frequency 
- * 
+ * Play a frequency
+ *
  * @param frequency     the tone frequency
  * @param duration      the tone duration in milliseconds
- * 
+ *
  */
 void LeoNerdEncoder::playFrequency(int frequency, int duration) {
     waitBusy();
@@ -459,7 +459,7 @@ void LeoNerdEncoder::playFrequency(int frequency, int duration) {
 }
 
 /**
- * Mute buzzer 
+ * Mute buzzer
  */
 void LeoNerdEncoder::muteTone() {
     waitBusy();
@@ -471,10 +471,10 @@ void LeoNerdEncoder::muteTone() {
 
 /**
  * Set the KeyBeep frequency and duration
- * 
+ *
  * @param frequency     the tone frequency
  * @param duration      the tone duration in milliseconds
- * 
+ *
  */
 void LeoNerdEncoder::setKeyBeep(int frequency, int duration) {
     waitBusy();
@@ -548,8 +548,8 @@ void LeoNerdEncoder::setButtonReleaseMask(uint8_t mask) {
 
 /**
  * Enable the EEPROM for writing
- * 
- * This is a security measure to avoid accidentally overwriting the 
+ *
+ * This is a security measure to avoid accidentally overwriting the
  * EEPROM if there're some unwanted signals on the I2C bus.
  * This method is called for each setEepromValue() operation.
  */
@@ -567,10 +567,10 @@ void LeoNerdEncoder::unlockEepromWrite() {
 
 /**
  * Set EEPROM value
- * 
- * Be careful with this method and know what you're doing! 
+ *
+ * Be careful with this method and know what you're doing!
  * It may render your encoder unusable!
- * 
+ *
  * @param eep_adr   the EEPROM address @see LeoNerdEncoder.h (REG_EEPROM*)
  * @param value     the value to be written
  */
@@ -588,7 +588,7 @@ void LeoNerdEncoder::setEepromValue(uint8_t eep_adr, uint8_t value) {
 
 /**
  * Read the RELEASEMASK
- * 
+ *
  * @returns the current value
  */
 uint8_t LeoNerdEncoder::queryReleaseMask() {
@@ -598,7 +598,7 @@ uint8_t LeoNerdEncoder::queryReleaseMask() {
 
 /**
  * Read the KEYBEEP DURATION
- * 
+ *
  * @returns the current value
  */
 uint8_t LeoNerdEncoder::queryKeyBeepDuration() {
@@ -608,7 +608,7 @@ uint8_t LeoNerdEncoder::queryKeyBeepDuration() {
 
 /**
  * Read the KEYBEEP MASK
- * 
+ *
  * @returns the current value
  */
 uint8_t LeoNerdEncoder::queryKeyBeepMask() {
@@ -618,7 +618,7 @@ uint8_t LeoNerdEncoder::queryKeyBeepMask() {
 
 /**
  * Read the BEEP DURATION
- * 
+ *
  * @returns the current value
  */
 uint8_t LeoNerdEncoder::queryBeepDuration() {
@@ -628,7 +628,7 @@ uint8_t LeoNerdEncoder::queryBeepDuration() {
 
 /**
  * Read the BEEP TONE
- * 
+ *
  * @returns the current value
  */
 uint8_t LeoNerdEncoder::queryBeepTone() {
@@ -638,7 +638,7 @@ uint8_t LeoNerdEncoder::queryBeepTone() {
 
 /**
  * Read the PWM value for LED1
- * 
+ *
  * @returns the current value
  */
 uint8_t LeoNerdEncoder::queryLed1Pwm() {
@@ -647,8 +647,8 @@ uint8_t LeoNerdEncoder::queryLed1Pwm() {
 }
 
 /**
- * Read the PWM value for LED2 
- * 
+ * Read the PWM value for LED2
+ *
  * @returns the current value
  */
 uint8_t LeoNerdEncoder::queryLed2Pwm() {
@@ -658,7 +658,7 @@ uint8_t LeoNerdEncoder::queryLed2Pwm() {
 
 /**
  * Read the GPIO DIRECTION settings
- * 
+ *
  * @returns the current value
  */
 uint8_t LeoNerdEncoder::queryGpioDir() {
@@ -668,7 +668,7 @@ uint8_t LeoNerdEncoder::queryGpioDir() {
 
 /**
  * Read the GPIO states
- * 
+ *
  * @returns the current value
  */
 uint8_t LeoNerdEncoder::queryGpioIo() {
@@ -678,7 +678,7 @@ uint8_t LeoNerdEncoder::queryGpioIo() {
 
 /**
  * Read the GPIO PULLUP settings
- * 
+ *
  * @returns the current value
  */
 uint8_t LeoNerdEncoder::queryGpioPullup() {
@@ -688,7 +688,7 @@ uint8_t LeoNerdEncoder::queryGpioPullup() {
 
 /**
  * Read the GPIO EVENTMASK settings
- * 
+ *
  * @returns the current value
  */
 uint8_t LeoNerdEncoder::queryGpioEventMask() {
@@ -697,8 +697,8 @@ uint8_t LeoNerdEncoder::queryGpioEventMask() {
 }
 
 /**
- * Query the ENCODER ADDRESS 
- * 
+ * Query the ENCODER ADDRESS
+ *
  * @returns the configured address
  */
 uint8_t LeoNerdEncoder::queryEncoderAddress() {
@@ -707,8 +707,8 @@ uint8_t LeoNerdEncoder::queryEncoderAddress() {
 }
 
 /**
- * Read the OPTIONS register 
- * 
+ * Read the OPTIONS register
+ *
  * @returns the options as set in EEPROM
  */
 uint8_t LeoNerdEncoder::queryOptions() {
@@ -717,8 +717,8 @@ uint8_t LeoNerdEncoder::queryOptions() {
 }
 
 /**
- * Read the DEBOUNCE TIME 
- * 
+ * Read the DEBOUNCE TIME
+ *
  * @returns the default time
  */
 uint8_t LeoNerdEncoder::queryDebounceTime() {
@@ -727,8 +727,8 @@ uint8_t LeoNerdEncoder::queryDebounceTime() {
 }
 
 /**
- * Read the HOLD TIME 
- * 
+ * Read the HOLD TIME
+ *
  * @returns the default time
  */
 uint8_t LeoNerdEncoder::queryHoldTime() {
@@ -738,7 +738,7 @@ uint8_t LeoNerdEncoder::queryHoldTime() {
 
 /**
  * Read the BUTTON TO GPIO MAPPING
- * 
+ *
  * @returns the current GPIO ports it's mapped to
  */
 uint8_t LeoNerdEncoder::queryButtonMapping(Buttons button) {
@@ -765,7 +765,7 @@ uint8_t LeoNerdEncoder::queryButtonMapping(Buttons button) {
 
 /**
  * Read the BUTTON TO GPIO MAPPING POLARITY
- * 
+ *
  * @returns     the current GPIO ports it's mapped to
  */
 uint8_t LeoNerdEncoder::queryButtonMappingPolarity(Buttons button) {
@@ -791,8 +791,8 @@ uint8_t LeoNerdEncoder::queryButtonMappingPolarity(Buttons button) {
 }
 
 /**
- * Read the WHEEL ACCELERATION time 
- * 
+ * Read the WHEEL ACCELERATION time
+ *
  * @returns the default time in ms
  */
 uint8_t LeoNerdEncoder::queryWheelAcceleration() {
@@ -801,8 +801,8 @@ uint8_t LeoNerdEncoder::queryWheelAcceleration() {
 }
 
 /**
- * Read the WHEEL DECELERATION time 
- * 
+ * Read the WHEEL DECELERATION time
+ *
  * @returns the default time in ms
  */
 uint8_t LeoNerdEncoder::queryWheelDeceleration() {
@@ -812,7 +812,7 @@ uint8_t LeoNerdEncoder::queryWheelDeceleration() {
 
 /**
  * Read the VERSION info
- * 
+ *
  * @returns the current value
  */
 uint8_t LeoNerdEncoder::queryVersion() {
@@ -825,7 +825,7 @@ uint8_t LeoNerdEncoder::queryVersion() {
  * @param reg       the register in charge
  * @param buffer    the pointer to the result buffer
  * @param size      the max. size of the result buffer
- * 
+ *
  * @returns the number of bytes received from FIFO; buffer gets filled accordingly
  */
 uint8_t LeoNerdEncoder::queryRegister(uint8_t reg, uint8_t* buffer, uint8_t size) {
@@ -854,7 +854,7 @@ uint8_t LeoNerdEncoder::queryRegister(uint8_t reg, uint8_t* buffer, uint8_t size
 /**
  * Query the value of the given register
  * @param reg   the register in charge
- * 
+ *
  * @returns the response read
  */
 uint8_t LeoNerdEncoder::queryRegister(uint8_t reg) {
@@ -869,4 +869,3 @@ uint8_t LeoNerdEncoder::queryRegister(uint8_t reg) {
         delayMicroseconds(10);
     return Wire.read();
 }
-
