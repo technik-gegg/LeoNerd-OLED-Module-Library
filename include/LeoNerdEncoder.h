@@ -19,9 +19,6 @@
  */
 #pragma once
 
-#ifndef _LEONERD_ENCODER_H
-#define _LEONERD_ENCODER_H 1
-
 #include <stdint.h>
 #if defined (__AVR__)
 #include <avr/io.h>
@@ -39,7 +36,7 @@
 #include "LeoNerdEvent.h"
 
 // Registers for I2C
-#define REG_EVENT               0x01    // Implements an 8-level deep FIFO of input events. Each event is formed of a single byte. 
+#define REG_EVENT               0x01    // Implements an 8-level deep FIFO of input events. Each event is formed of a single byte.
 #define REG_RELEASEMASK         0x02    // Controls whether buttons will send event reports on release as well as press (bits set to 1), or on press only (bits set to 0).
 #define REG_DEBOUNCE_TIME       0x03    // Sets the duration in milliseconds for key debounce detection
 #define REG_BTNHOLD_TIME        0x04    // Sets the duration in centiseconds for reporting a "button held" event (75 by default)
@@ -70,8 +67,8 @@
 #define OPTION_ACCELERATION     0x01    // 1 = enable / 0 = disable encoder wheel acceleration (GMagican only)
 #define OPTION_INVERT_WHEEL     0x80    // 1 = invert encoder wheel direction  / 0 = default direction
 
-// Release Mask 
-#define EVENT_RELEASE_IGNORE    0x01 
+// Release Mask
+#define EVENT_RELEASE_IGNORE    0x01
 #define EVENT_RELEASE_WHEEL     0x02
 #define EVENT_RELEASE_MAIN      0x04
 #define EVENT_RELEASE_LEFT      0x08
@@ -88,7 +85,7 @@
 #define BEEP_ALL_KEYS           BEEP_WHEEL_ROTATION | BEEP_WHEEL_BUTTON | BEEP_MAIN_BUTTON | BEEP_LEFT_BUTTON | BEEP_RIGHT_BUTTON
 
 // Events
-// The top three bits of the event classify it into a category, 
+// The top three bits of the event classify it into a category,
 // the remaining bits are specific to that category
 #define EVENT_NONE                      0x00
 #define EVENT_WHEEL_DOWN                0x21
@@ -123,12 +120,21 @@ typedef enum _Buttons {
     RightButton
 } Buttons;
 
+#if defined(__STM32F1__)
+    #define I2CBusBase  WireBase
+#else
+    #define I2CBusBase  TwoWire
+#endif
+
 class LeoNerdEncoder {
 public:
     LeoNerdEncoder(uint8_t address, int intPin = -1, void (*interruptHandler)(void) = NULL, void (*eventHandler)(LeoNerdEvent) = NULL, bool keyBeep = false);
     ~LeoNerdEncoder();
 
-    void            begin(void);
+    void            begin(void) { internalBegin(&Wire); }
+#if defined(__STM32F1__)
+    void            begin(I2CBusBase *i2cBus) { internalBegin(i2cBus); }
+#endif
     void            service(void);
     void            loop(void);
     void            flushFifo(void);
@@ -185,6 +191,7 @@ public:
     uint8_t         queryVersion(void);
 
 private:
+    void            internalBegin(I2CBusBase* i2cBus);
     void            parseData(uint8_t reg, uint8_t data);
     void            parseEvent(uint8_t data);
     void            setButtonEvent(Button* instance, ButtonState state);
@@ -195,6 +202,7 @@ private:
     void            (*_eventHandler)(LeoNerdEvent);
     void            (*_interruptHandler)(void);
 
+    I2CBusBase*     _I2CBus;
     uint8_t         _address;
     Button          _encoderButton;
     Button          _mainButton;
@@ -209,4 +217,3 @@ private:
     bool            _accelEnabled;
     volatile bool   _isBusy;
 };
-#endif

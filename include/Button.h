@@ -1,6 +1,6 @@
 /**
  * Library for LeoNerd's OLED Module
- * 
+ *
  * Copyright (C) 2020 Technik Gegg
  *
  * This program is free software: you can redistribute it and/or modify
@@ -18,9 +18,6 @@
  *
  */
 #pragma once
-
-#ifndef _BUTTON_H
-#define _BUTTON_H 1
 
 #include <Arduino.h>
 #include "ButtonState.h"
@@ -49,8 +46,7 @@ private:
     volatile ButtonState     _state;
     unsigned long           _lastButtonPressed;
     unsigned long           _lastButtonReleased;
-    volatile uint8_t        _doubleClickTicks;     
-    bool                    _doubleClickEnabled;  
+    volatile uint8_t        _doubleClickTicks;
+    bool                    _doubleClickEnabled;
     volatile uint8_t        _clickCount;
 };
-#endif

@@ -51,15 +51,16 @@ LeoNerdEncoder::~LeoNerdEncoder() {
     if(_intPin != -1)
         detachInterrupt(_intPin);
     #if !defined(__ESP32__) && !defined(ESP8266)
-    Wire.end();
+    if (_I2CBus != nullptr) _I2CBus->end();
     #endif
 }
 
 /**
  * Initialize the encoder library
  */
-void LeoNerdEncoder::begin() {
-    Wire.begin();
+void LeoNerdEncoder::internalBegin(I2CBusBase* bus) {
+    _I2CBus = bus;
+    if (bus != nullptr) _I2CBus->begin();
     _wheelPos = 0;
     _isBusy = false;
     flushFifo();
@@ -157,7 +158,7 @@ void LeoNerdEncoder::setButtonEvent(Button* instance, ButtonState state) {
 void LeoNerdEncoder::parseEvent(uint8_t data) {
 
     // special handling for encoder wheel acceleration as implemented
-    // in GMagicans firmware
+    // in GMagician firmware
     uint8_t steps = 1;
     if(data > 0x20 && data < 0x3F) {
         steps = ((data & 0x1C) >> 2)+1;
@@ -345,13 +346,15 @@ void LeoNerdEncoder::resetButtons() {
  * @param state     true (on) / false (off)
  */
 void LeoNerdEncoder::setLED(uint8_t which, bool state) {
+    if (_I2CBus == nullptr) return;
+
     if(which >= 1 && which <= MAX_LEDS) {
         waitBusy();
-        Wire.beginTransmission(_address);
-        Wire.write(which == 1 ? REG_LED1_PWM : REG_LED2_PWM);
+        _I2CBus->beginTransmission(_address);
+        _I2CBus->write(which == 1 ? REG_LED1_PWM : REG_LED2_PWM);
         _leds[which-1] = state ? _maxBrightness : 0;
-        Wire.write(_leds[which-1]);
-        Wire.endTransmission();
+        _I2CBus->write(_leds[which-1]);
+        _I2CBus->endTransmission();
     }
 }
 
@@ -362,13 +365,15 @@ void LeoNerdEncoder::setLED(uint8_t which, bool state) {
  * @param state     true (on) / false (off)
  */
 void LeoNerdEncoder::toggleLED(uint8_t which) {
+    if (_I2CBus == nullptr) return;
+
     if(which >= 1 && which <= MAX_LEDS) {
         waitBusy();
-        Wire.beginTransmission(_address);
-        Wire.write(which == 1 ? REG_LED1_PWM : REG_LED2_PWM);
+        _I2CBus->beginTransmission(_address);
+        _I2CBus->write(which == 1 ? REG_LED1_PWM : REG_LED2_PWM);
         _leds[which-1] = _leds[which-1]==0 ? _maxBrightness : 0;
-        Wire.write(_leds[which-1]);
-        Wire.endTransmission();
+        _I2CBus->write(_leds[which-1]);
+        _I2CBus->endTransmission();
     }
 }
 
@@ -384,12 +389,14 @@ void LeoNerdEncoder::setGPIOMode(uint8_t which, WiringPinMode mode)
 void LeoNerdEncoder::setGPIOMode(uint8_t which, int mode)
 #endif
 {
+    if (_I2CBus == nullptr) return;
+
     waitBusy();
-    Wire.beginTransmission(_address);
-    Wire.write(REG_GPIO_DIR);
+    _I2CBus->beginTransmission(_address);
+    _I2CBus->write(REG_GPIO_DIR);
     _gpioDir = (mode == INPUT) ? _gpioDir & ~(1<<which) : _gpioDir | (1<<which);
-    Wire.write(_gpioDir &0x0f);
-    Wire.endTransmission();
+    _I2CBus->write(_gpioDir &0x0f);
+    _I2CBus->endTransmission();
 }
 
 /**
@@ -399,12 +406,14 @@ void LeoNerdEncoder::setGPIOMode(uint8_t which, int mode)
  * @param state     true (HIGH) / false (LOW)
  */
 void LeoNerdEncoder::setGPIO(uint8_t which, bool state){
+    if (_I2CBus == nullptr) return;
+
     waitBusy();
-    Wire.beginTransmission(_address);
-    Wire.write(REG_GPIO_IO);
+    _I2CBus->beginTransmission(_address);
+    _I2CBus->write(REG_GPIO_IO);
     _gpioVal = (!state) ? _gpioVal & ~(1<<which) : _gpioVal | (1<<which);
-    Wire.write(_gpioVal & 0x0f);
-    Wire.endTransmission();
+    _I2CBus->write(_gpioVal & 0x0f);
+    _I2CBus->endTransmission();
 }
 
 /**
@@ -425,16 +434,18 @@ bool LeoNerdEncoder::getGPIO(uint8_t which) {
  *
  */
 void LeoNerdEncoder::playTone(int frequency, int duration) {
-    waitBusy();
-    Wire.beginTransmission(_address);
-    Wire.write(REG_BEEP_TONE);
-    Wire.write((uint8_t)frequency/10);
-    Wire.endTransmission();
+    if (_I2CBus == nullptr) return;
 
-    Wire.beginTransmission(_address);
-    Wire.write(REG_BEEP_DURATION);
-    Wire.write((uint8_t)duration/10);
-    Wire.endTransmission();
+    waitBusy();
+    _I2CBus->beginTransmission(_address);
+    _I2CBus->write(REG_BEEP_TONE);
+    _I2CBus->write((uint8_t)frequency/10);
+    _I2CBus->endTransmission();
+
+    _I2CBus->beginTransmission(_address);
+    _I2CBus->write(REG_BEEP_DURATION);
+    _I2CBus->write((uint8_t)duration/10);
+    _I2CBus->endTransmission();
 }
 
 /**
@@ -445,28 +456,32 @@ void LeoNerdEncoder::playTone(int frequency, int duration) {
  *
  */
 void LeoNerdEncoder::playFrequency(int frequency, int duration) {
-    waitBusy();
-    Wire.beginTransmission(_address);
-    Wire.write(REG_BEEP_FREQH);
-    Wire.write((uint8_t)(frequency >> 8));
-    Wire.write((uint8_t)(frequency & 0xFF));
-    Wire.endTransmission();
+    if (_I2CBus == nullptr) return;
 
-    Wire.beginTransmission(_address);
-    Wire.write(REG_BEEP_DURATION);
-    Wire.write((uint8_t)duration/10);
-    Wire.endTransmission();
+    waitBusy();
+    _I2CBus->beginTransmission(_address);
+    _I2CBus->write(REG_BEEP_FREQH);
+    _I2CBus->write((uint8_t)(frequency >> 8));
+    _I2CBus->write((uint8_t)(frequency & 0xFF));
+    _I2CBus->endTransmission();
+
+    _I2CBus->beginTransmission(_address);
+    _I2CBus->write(REG_BEEP_DURATION);
+    _I2CBus->write((uint8_t)duration/10);
+    _I2CBus->endTransmission();
 }
 
 /**
  * Mute buzzer
  */
 void LeoNerdEncoder::muteTone() {
+    if (_I2CBus == nullptr) return;
+
     waitBusy();
-    Wire.beginTransmission(_address);
-    Wire.write(REG_BEEP_DURATION);
-    Wire.write(0);
-    Wire.endTransmission();
+    _I2CBus->beginTransmission(_address);
+    _I2CBus->write(REG_BEEP_DURATION);
+    _I2CBus->write(0);
+    _I2CBus->endTransmission();
 }
 
 /**
@@ -477,11 +492,13 @@ void LeoNerdEncoder::muteTone() {
  *
  */
 void LeoNerdEncoder::setKeyBeep(int frequency, int duration) {
+    if (_I2CBus == nullptr) return;
+
     waitBusy();
-    Wire.beginTransmission(_address);
-    Wire.write(REG_BEEP_TONE);
-    Wire.write((uint8_t)frequency/10);
-    Wire.endTransmission();
+    _I2CBus->beginTransmission(_address);
+    _I2CBus->write(REG_BEEP_TONE);
+    _I2CBus->write((uint8_t)frequency/10);
+    _I2CBus->endTransmission();
     setKeyBeepDuration((uint8_t)duration/10);
     setKeyBeepMask();
 }
@@ -491,11 +508,13 @@ void LeoNerdEncoder::setKeyBeep(int frequency, int duration) {
  * @param duration      the tone duration in milliseconds
  */
 void LeoNerdEncoder::setKeyBeepDuration(uint8_t duration) {
+    if (_I2CBus == nullptr) return;
+
     waitBusy();
-    Wire.beginTransmission(_address);
-    Wire.write(REG_KEYBEEP_DURATION);
-    Wire.write(duration);
-    Wire.endTransmission();
+    _I2CBus->beginTransmission(_address);
+    _I2CBus->write(REG_KEYBEEP_DURATION);
+    _I2CBus->write(duration);
+    _I2CBus->endTransmission();
 }
 
 /**
@@ -503,11 +522,13 @@ void LeoNerdEncoder::setKeyBeepDuration(uint8_t duration) {
  * @param mask      mask to set (which buttons will beep on action)
  */
 void LeoNerdEncoder::setKeyBeepMask(uint8_t mask) {
+    if (_I2CBus == nullptr) return;
+
     waitBusy();
-    Wire.beginTransmission(_address);
-    Wire.write(REG_KEYBEEP_MASK);
-    Wire.write(mask);
-    Wire.endTransmission();
+    _I2CBus->beginTransmission(_address);
+    _I2CBus->write(REG_KEYBEEP_MASK);
+    _I2CBus->write(mask);
+    _I2CBus->endTransmission();
 }
 
 /**
@@ -515,11 +536,13 @@ void LeoNerdEncoder::setKeyBeepMask(uint8_t mask) {
  * @param time      time in milliseconds (0-255)
  */
 void LeoNerdEncoder::setDebounceTime(uint8_t time) {
+    if (_I2CBus == nullptr) return;
+
     waitBusy();
-    Wire.beginTransmission(_address);
-    Wire.write(REG_DEBOUNCE_TIME);
-    Wire.write(time);
-    Wire.endTransmission();
+    _I2CBus->beginTransmission(_address);
+    _I2CBus->write(REG_DEBOUNCE_TIME);
+    _I2CBus->write(time);
+    _I2CBus->endTransmission();
 }
 
 /**
@@ -527,11 +550,13 @@ void LeoNerdEncoder::setDebounceTime(uint8_t time) {
  * @param time  time in centiseconds (0-255)
  */
 void LeoNerdEncoder::setButtonHoldTime(uint8_t time) {
+    if (_I2CBus == nullptr) return;
+
     waitBusy();
-    Wire.beginTransmission(_address);
-    Wire.write(REG_BTNHOLD_TIME);
-    Wire.write(time);
-    Wire.endTransmission();
+    _I2CBus->beginTransmission(_address);
+    _I2CBus->write(REG_BTNHOLD_TIME);
+    _I2CBus->write(time);
+    _I2CBus->endTransmission();
 }
 
 /**
@@ -539,11 +564,13 @@ void LeoNerdEncoder::setButtonHoldTime(uint8_t time) {
  * @param mask  button release mask @see LeoNerdEncoder.h
  */
 void LeoNerdEncoder::setButtonReleaseMask(uint8_t mask) {
+    if (_I2CBus == nullptr) return;
+
     waitBusy();
-    Wire.beginTransmission(_address);
-    Wire.write(REG_RELEASEMASK);
-    Wire.write(mask);
-    Wire.endTransmission();
+    _I2CBus->beginTransmission(_address);
+    _I2CBus->write(REG_RELEASEMASK);
+    _I2CBus->write(mask);
+    _I2CBus->endTransmission();
 }
 
 /**
@@ -554,15 +581,17 @@ void LeoNerdEncoder::setButtonReleaseMask(uint8_t mask) {
  * This method is called for each setEepromValue() operation.
  */
 void LeoNerdEncoder::unlockEepromWrite() {
-    Wire.beginTransmission(_address);
-    Wire.write(REG_EEPROM_UNLOCK);
-    Wire.write(0x12);
-    Wire.endTransmission();
+    if (_I2CBus == nullptr) return;
 
-    Wire.beginTransmission(_address);
-    Wire.write(REG_EEPROM_UNLOCK);
-    Wire.write(0x34);
-    Wire.endTransmission();
+    _I2CBus->beginTransmission(_address);
+    _I2CBus->write(REG_EEPROM_UNLOCK);
+    _I2CBus->write(0x12);
+    _I2CBus->endTransmission();
+
+    _I2CBus->beginTransmission(_address);
+    _I2CBus->write(REG_EEPROM_UNLOCK);
+    _I2CBus->write(0x34);
+    _I2CBus->endTransmission();
 }
 
 /**
@@ -575,13 +604,15 @@ void LeoNerdEncoder::unlockEepromWrite() {
  * @param value     the value to be written
  */
 void LeoNerdEncoder::setEepromValue(uint8_t eep_adr, uint8_t value) {
+    if (_I2CBus == nullptr) return;
+
     if(eep_adr >= REG_EEPROM && eep_adr <= REG_EEPROM_BTN_POLARITY) {
         waitBusy();
         unlockEepromWrite();
-        Wire.beginTransmission(_address);
-        Wire.write(eep_adr);
-        Wire.write(value);
-        Wire.endTransmission();
+        _I2CBus->beginTransmission(_address);
+        _I2CBus->write(eep_adr);
+        _I2CBus->write(value);
+        _I2CBus->endTransmission();
     }
 }
 
@@ -829,19 +860,21 @@ uint8_t LeoNerdEncoder::queryVersion() {
  * @returns the number of bytes received from FIFO; buffer gets filled accordingly
  */
 uint8_t LeoNerdEncoder::queryRegister(uint8_t reg, uint8_t* buffer, uint8_t size) {
+    if (_I2CBus == nullptr) return 0;
+
     uint8_t stat = 0;
     do {
-        Wire.beginTransmission(_address);
-        Wire.write(reg);
-        stat = Wire.endTransmission();
+        _I2CBus->beginTransmission(_address);
+        _I2CBus->write(reg);
+        stat = _I2CBus->endTransmission();
     } while(stat > 1);
     if(stat == 0) {
-        uint8_t cnt = Wire.requestFrom(_address, size);
-        while(!Wire.available())
+        uint8_t cnt = _I2CBus->requestFrom(_address, size);
+        while(!_I2CBus->available())
             delayMicroseconds(10);
         uint8_t ndx = 0;
         while(ndx < cnt) {
-            uint8_t response = Wire.read();
+            uint8_t response = _I2CBus->read();
             if(ndx < size)
                 *(buffer+ndx) = response;
             ndx++;
@@ -858,14 +891,16 @@ uint8_t LeoNerdEncoder::queryRegister(uint8_t reg, uint8_t* buffer, uint8_t size
  * @returns the response read
  */
 uint8_t LeoNerdEncoder::queryRegister(uint8_t reg) {
+    if (_I2CBus == nullptr) return 0;
+
     uint8_t stat = 0;
     do {
-        Wire.beginTransmission(_address);
-        Wire.write(reg);
-        stat = Wire.endTransmission();
+        _I2CBus->beginTransmission(_address);
+        _I2CBus->write(reg);
+        stat = _I2CBus->endTransmission();
     } while(stat > 1);
-    Wire.requestFrom(_address, (uint8_t)1);
-    while(!Wire.available())
+    _I2CBus->requestFrom(_address, (uint8_t)1);
+    while(!_I2CBus->available())
         delayMicroseconds(10);
-    return Wire.read();
+    return _I2CBus->read();
 }

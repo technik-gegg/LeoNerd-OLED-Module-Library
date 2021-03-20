@@ -1,6 +1,6 @@
 /**
  * Library for LeoNerd's OLED Module
- * 
+ *
  * Copyright (C) 2020 Technik Gegg
  *
  * This program is free software: you can redistribute it and/or modify
@@ -19,9 +19,6 @@
  */
 #pragma once
 
-#ifndef _BUTTON_STATE_H
-#define _BUTTON_STATE_H 1
-
 typedef enum _ButtonState {
     Open = 0,
     Closed,
@@ -34,5 +31,3 @@ typedef enum _ButtonState {
     LeftTurn,
     RightTurn
 } ButtonState;
-
-#endif

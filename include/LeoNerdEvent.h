@@ -1,6 +1,6 @@
 /**
  * Library for LeoNerd's OLED Module
- * 
+ *
  * Copyright (C) 2020 Technik Gegg
  *
  * This program is free software: you can redistribute it and/or modify
@@ -18,9 +18,6 @@
  *
  */
 #pragma once
-
-#ifndef _LEONERD_EVENT_H
-#define _LEONERD_EVENT_H 1
 
 #include <Arduino.h>
 #include "ButtonState.h"
@@ -45,4 +42,3 @@ public:
     volatile ButtonState    State;
     volatile uint8_t        Value;
 };
-#endif
