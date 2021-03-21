@@ -59,8 +59,10 @@ LeoNerdEncoder::~LeoNerdEncoder() {
  * Initialize the encoder library
  */
 void LeoNerdEncoder::internalBegin(I2CBusBase* bus) {
+    if (bus == nullptr) return;
+
     _I2CBus = bus;
-    if (bus != nullptr) _I2CBus->begin();
+    _I2CBus->begin();
     _wheelPos = 0;
     _isBusy = false;
     flushFifo();
