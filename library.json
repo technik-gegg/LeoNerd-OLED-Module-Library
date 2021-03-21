@@ -23,7 +23,7 @@
       "olikraus/U8g2": "~2.28.6"
     },
     "frameworks": "Arduino",
-    "platforms": [ "atmelavr, ststm32, esp8266" ],
+    "platforms": [ "atmelavr, ststm32, esp32, esp8266" ],
     "examples": [
         {
             "name": "Basic",
