@@ -1,6 +1,6 @@
 {
     "name": "LeoNerd-OLED-Module-Library",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "description": "A library for the LeoNerd's OLED Module Panel on the Arduino framework.",
     "keywords": "LeoNerd, OLED, Encoder, Arduino, AVR, STM32",
     "repository":
@@ -23,7 +23,7 @@
       "olikraus/U8g2": "~2.28.6"
     },
     "frameworks": "Arduino",
-    "platforms": [ "atmelavr, ststm32" ],
+    "platforms": [ "atmelavr, ststm32, esp32, esp8266" ],
     "examples": [
         {
             "name": "Basic",
