@@ -18,6 +18,13 @@ lib_deps =  ...
             ...
 ```
 
+If you're going to compile for an STM32F1xx MCU using the **Maple** framework (*board_build.core=maple*), add the next two lines to your platformio.ini as well:
+
+```bash
+board_build.core   = maple
+build_flags        = -D __LIBMAPLE__  # compile for Maple framework
+```
+
 The "basic" sample in the examples folder will show you how to use this library.
 
 ### Usage In A Nutshell
@@ -106,7 +113,8 @@ If you have another I2C device connected to your MCU which comes with such pull-
 
 ## Change History
 
-+ added queryOptions() method to read out the Options register
-+ added encoder wheel acceleration handling as used in GMagicans alternative firmware version
++ added conditional compilation for STM32F1xx. Using a STM32F1 MCU under the Maple framework (*board_build.core = maple*), needs adding the definition **-D \_\_LIBMAPLE\_\_** to make the library compile properly
++ added *queryOptions()* method to read out the Options register
++ added encoder wheel acceleration handling as used in GMagicians alternative firmware version
 + updated basic example (added playing tune, decreased the memory footprint)
 + added conditional compiling for ESP32 since *Wire.end()* is unknown to the framework

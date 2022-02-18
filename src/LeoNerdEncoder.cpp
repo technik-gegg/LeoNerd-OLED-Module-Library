@@ -385,7 +385,7 @@ void LeoNerdEncoder::toggleLED(uint8_t which) {
  * @param which     number of the GPIO pin (0-3)
  * @param mode      INPUT or OUTPUT
  */
-#if defined(__STM32F1__)
+#if defined(__STM32F1__) && defined(__LIBMAPLE__)
 void LeoNerdEncoder::setGPIOMode(uint8_t which, WiringPinMode mode)
 #else
 void LeoNerdEncoder::setGPIOMode(uint8_t which, int mode)

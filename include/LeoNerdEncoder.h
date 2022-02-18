@@ -25,7 +25,7 @@
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
 #endif
-#if defined (__STM32F1__)
+#if defined (__STM32F1__) && defined(__LIBMAPLE__)
 #include <wirish.h>
 #include <libmaple/gpio.h>
 #endif
@@ -120,7 +120,7 @@ typedef enum _Buttons {
     RightButton
 } Buttons;
 
-#if defined(__STM32F1__)
+#if defined(__STM32F1__) && defined(__LIBMAPLE__)
     #define I2CBusBase  WireBase
 #else
     #define I2CBusBase  TwoWire
@@ -132,7 +132,7 @@ public:
     ~LeoNerdEncoder();
 
     void            begin(void) { internalBegin(&Wire); }
-#if defined(__STM32F1__)
+#if defined(__STM32F1__) && defined(__LIBMAPLE__)
     void            begin(I2CBusBase *i2cBus) { internalBegin(i2cBus); }
 #endif
     void            service(void);
@@ -160,7 +160,7 @@ public:
     void            setMaxBrightness(uint8_t brightness) { _maxBrightness = brightness; }
     void            setLED(uint8_t which, bool state);
     void            toggleLED(uint8_t which);
-#if defined(__STM32F1__)
+#if defined(__STM32F1__) && defined(__LIBMAPLE__)
     void            setGPIOMode(uint8_t which, WiringPinMode mode);
 #else
     void            setGPIOMode(uint8_t which, int mode);
