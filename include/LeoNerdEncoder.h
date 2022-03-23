@@ -105,8 +105,8 @@
 #define EVENT_GPIO_CHANGE               0x60
 
 #define MAX_LEDS                2       // there ain't no more
-#define LED_RED                 1       // for setLED / toggleLED
-#define LED_GREEN               2
+#define LN_LED_RED              1       // for setLED / toggleLED
+#define LN_LED_GREEN            2
 #define MAX_BUFFER              8       // buffer size of the FIFO
 #define DOUBLECLICK_TIME        600     // second click must be within 600ms (not supported yet)
 #define LONG_CLICK_TIME         1200    // hold time for long click
