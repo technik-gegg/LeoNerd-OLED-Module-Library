@@ -120,16 +120,16 @@ void loop() {
       draw();
       // set LEDs of Main button to off when wheel position = 0
       if(encoderPos == 0) {
-          encoder.setLED(LED_GREEN, false);
-          encoder.setLED(LED_RED, false);
+          encoder.setLED(LN_LED_GREEN, false);
+          encoder.setLED(LN_LED_RED, false);
       }
       // turn green LED on if wheel position is positive
       if(encoderPos > 0) {
-          encoder.setLED(LED_GREEN, true);
+          encoder.setLED(LN_LED_GREEN, true);
       }
       // turn red LED on if wheel position is negative
       if(encoderPos < 0) {
-          encoder.setLED(LED_RED, true);
+          encoder.setLED(LN_LED_RED, true);
       }
     }
     if(wheelBtn != Open || mainBtn != Open || leftBtn != Open || rightBtn != Open) {
