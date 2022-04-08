@@ -25,12 +25,16 @@
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
 #endif
-#if defined (__STM32F1__) && defined(__LIBMAPLE__)
+#if defined(__STM32F1XX) && defined(__LIBMAPLE__)
 #include <wirish.h>
 #include <libmaple/gpio.h>
 #endif
 #include "Arduino.h"
+#if !defined(USE_SW_TWI)
 #include <Wire.h>
+#else
+#include <SoftWire.h>
+#endif
 #include "ButtonState.h"
 #include "Button.h"
 #include "LeoNerdEvent.h"
@@ -64,7 +68,7 @@
 #define REG_SW_VERSION          0xF0    // Reports the current firmware version (default: 0x02)
 
 // Options Mask
-#define OPTION_ACCELERATION     0x01    // 1 = enable / 0 = disable encoder wheel acceleration (GMagican only)
+#define OPTION_ACCELERATION     0x01    // 1 = enable / 0 = disable encoder wheel acceleration (GMagician only)
 #define OPTION_INVERT_WHEEL     0x80    // 1 = invert encoder wheel direction  / 0 = default direction
 
 // Release Mask
@@ -105,8 +109,13 @@
 #define EVENT_GPIO_CHANGE               0x60
 
 #define MAX_LEDS                2       // there ain't no more
-#define LN_LED_RED              1       // for setLED / toggleLED
+#if defined(__LIBMAPLE__)
+#define LED_RED                 1       // for setLED / toggleLED (Maple framework)
+#define LED_GREEN               2
+#else
+#define LN_LED_RED              1       // for setLED / toggleLED (STM32Duino framework)
 #define LN_LED_GREEN            2
+#endif
 #define MAX_BUFFER              8       // buffer size of the FIFO
 #define DOUBLECLICK_TIME        600     // second click must be within 600ms (not supported yet)
 #define LONG_CLICK_TIME         1200    // hold time for long click
@@ -120,19 +129,31 @@ typedef enum _Buttons {
     RightButton
 } Buttons;
 
-#if defined(__STM32F1__) && defined(__LIBMAPLE__)
+#if defined(__STM32F1XX) && defined(__LIBMAPLE__)
     #define I2CBusBase  WireBase
 #else
-    #define I2CBusBase  TwoWire
+    #if !defined(USE_SW_TWI)
+        #define I2CBusBase  TwoWire
+    #else
+        #define I2CBusBase  SoftWire
+        #pragma message "Compiling for software TWI/I2C"
+    #endif
 #endif
 
 class LeoNerdEncoder {
 public:
-    LeoNerdEncoder(uint8_t address, int intPin = -1, void (*interruptHandler)(void) = NULL, void (*eventHandler)(LeoNerdEvent) = NULL, bool keyBeep = false);
+    LeoNerdEncoder(uint8_t address, uint16_t intPin = -1, void (*interruptHandler)(void) = NULL, void (*eventHandler)(LeoNerdEvent) = NULL, bool keyBeep = false);
     ~LeoNerdEncoder();
 
+#if defined(__STM32F1XX) && defined(__LIBMAPLE__)
     void            begin(void) { internalBegin(&Wire); }
-#if defined(__STM32F1__) && defined(__LIBMAPLE__)
+    void            begin(I2CBusBase *i2cBus) { internalBegin(i2cBus); }
+#elif !defined(__LIBMAPLE__)
+    #if !defined(USE_SW_TWI)
+    void            begin(void) { internalBegin(&Wire); }
+    #else
+    void            begin(void) { }; 
+    #endif
     void            begin(I2CBusBase *i2cBus) { internalBegin(i2cBus); }
 #endif
     void            service(void);
@@ -160,7 +181,7 @@ public:
     void            setMaxBrightness(uint8_t brightness) { _maxBrightness = brightness; }
     void            setLED(uint8_t which, bool state);
     void            toggleLED(uint8_t which);
-#if defined(__STM32F1__) && defined(__LIBMAPLE__)
+#if defined(__STM32F1XX) && defined(__LIBMAPLE__)
     void            setGPIOMode(uint8_t which, WiringPinMode mode);
 #else
     void            setGPIOMode(uint8_t which, int mode);
@@ -213,7 +234,7 @@ private:
     uint8_t         _gpioVal;
     uint8_t         _leds[MAX_LEDS];
     volatile int16_t _wheelPos;
-    int8_t          _intPin;
+    uint16_t        _intPin;
     bool            _accelEnabled;
     volatile bool   _isBusy;
 };

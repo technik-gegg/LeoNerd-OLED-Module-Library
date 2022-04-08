@@ -20,7 +20,7 @@
 #include "LeoNerdEncoder.h"
 
 
-LeoNerdEncoder::LeoNerdEncoder(uint8_t address, int intPin, void (*interruptHandler)(void), void (*eventHandler)(LeoNerdEvent), bool keyBeep) {
+LeoNerdEncoder::LeoNerdEncoder(uint8_t address, uint16_t intPin, void (*interruptHandler)(void), void (*eventHandler)(LeoNerdEvent), bool keyBeep) {
     _address = address;
 
     if(keyBeep) {
