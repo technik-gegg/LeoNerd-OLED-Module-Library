@@ -120,6 +120,14 @@
 #define DOUBLECLICK_TIME        600     // second click must be within 600ms (not supported yet)
 #define LONG_CLICK_TIME         1200    // hold time for long click
 
+#define ArraySize(arr)          (sizeof(arr) / sizeof(arr[0]))
+
+#if !defined(STM32_CORE_VERSION)
+typedef uint8_t     pin_t;
+#else
+typedef uint32_t    pin_t;
+#endif
+
 // Buttons
 typedef enum _Buttons {
     NoButton = 0,
@@ -136,28 +144,30 @@ typedef enum _Buttons {
         #define I2CBusBase  TwoWire
     #else
         #define I2CBusBase  SoftWire
-        #pragma message "Compiling for software TWI/I2C"
+        //#pragma message "Compiling for software TWI/I2C"
     #endif
 #endif
 
 class LeoNerdEncoder {
 public:
-    LeoNerdEncoder(uint8_t address, uint16_t intPin = -1, void (*interruptHandler)(void) = NULL, void (*eventHandler)(LeoNerdEvent) = NULL, bool keyBeep = false);
+    LeoNerdEncoder(uint8_t address, pin_t intPin = 0, void (*interruptHandler)(void) = nullptr, void (*eventHandler)(LeoNerdEvent) = nullptr, bool keyBeep = false);
     ~LeoNerdEncoder();
 
 #if defined(__STM32F1XX) && defined(__LIBMAPLE__)
-    void            begin(void) { internalBegin(&Wire); }
-    void            begin(I2CBusBase *i2cBus) { internalBegin(i2cBus); }
+    void            begin(bool initBus = true) { internalBegin(&Wire, initBus); }
+    void            begin(I2CBusBase *i2cBus, bool initBus = true) { internalBegin(i2cBus, initBus); }
 #elif !defined(__LIBMAPLE__)
     #if !defined(USE_SW_TWI)
-    void            begin(void) { internalBegin(&Wire); }
+    void            begin(bool initBus = true) { internalBegin(&Wire, initBus); }
     #else
-    void            begin(void) { }; 
+    // when using SW TWI, this case would be illegal, since no driver is given
+    // void            begin(bool initBus = false) { }; 
     #endif
-    void            begin(I2CBusBase *i2cBus) { internalBegin(i2cBus); }
+    void            begin(I2CBusBase *i2cBus, bool initBus = true) { internalBegin(i2cBus, initBus); }
 #endif
-    void            service(void);
-    void            loop(void);
+    uint8_t         service(bool autoParse = true);
+    uint8_t         loop(bool autoParse = true);
+    void            parseEvents(uint8_t cnt);
     void            flushFifo(void);
     int16_t         getValue(void) { int16_t val = _wheelPos; _wheelPos = 0; return val; };
 
@@ -176,7 +186,7 @@ public:
     void            playFrequency(int frequency, int duration);
     void            muteTone(void);
     void            setDoubleClickEnabled(bool enabled, uint8_t which = WheelButton);   // dummy; maybe someday in the future
-    bool            busy(void) { return _isBusy; }
+    bool            busy(void);
 
     void            setMaxBrightness(uint8_t brightness) { _maxBrightness = brightness; }
     void            setLED(uint8_t which, bool state);
@@ -212,16 +222,20 @@ public:
     uint8_t         queryVersion(void);
 
 private:
-    void            internalBegin(I2CBusBase* i2cBus);
+    void            internalBegin(I2CBusBase* i2cBus, bool initBus = true);
     void            parseData(uint8_t reg, uint8_t data);
     void            parseEvent(uint8_t data);
     void            setButtonEvent(Button* instance, ButtonState state);
     uint8_t         queryRegister(uint8_t reg, uint8_t* buffer, uint8_t size);
     uint8_t         queryRegister(uint8_t reg);
     void            unlockEepromWrite();
-    void            waitBusy(void) { while(_isBusy); };
+    void            waitBusy(void);
+    uint8_t         sendRequest(uint8_t reg);
+    uint8_t         sendData(uint8_t reg, uint8_t data);
+    uint8_t         sendData(uint8_t reg, uint8_t data1, uint8_t data2);
     void            (*_eventHandler)(LeoNerdEvent);
     void            (*_interruptHandler)(void);
+    uint8_t         assignButton(uint8_t button, uint8_t stat);
 
     I2CBusBase*     _I2CBus;
     uint8_t         _address;
@@ -234,7 +248,9 @@ private:
     uint8_t         _gpioVal;
     uint8_t         _leds[MAX_LEDS];
     volatile int16_t _wheelPos;
-    uint16_t        _intPin;
+    pin_t           _intPin;
     bool            _accelEnabled;
     volatile bool   _isBusy;
+    uint8_t         _evtBuffer[MAX_BUFFER];
+
 };

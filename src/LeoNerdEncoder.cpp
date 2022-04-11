@@ -18,16 +18,29 @@
  *
  */
 #include "LeoNerdEncoder.h"
+// #include "../../include/Debug.h"
 
-
-LeoNerdEncoder::LeoNerdEncoder(uint8_t address, uint16_t intPin, void (*interruptHandler)(void), void (*eventHandler)(LeoNerdEvent), bool keyBeep) {
+/**
+ * @brief Constructor
+ *        Call using (simple method):
+ *              LeoNerdEncoder encoder = LeoNerdEncoder(0x3D);
+ *        or (utilizing interrupt and event handlers):
+ *              LeoNerdEncoder encoder = LeoNerdEncoder(0x3D, myIntPin, myIntHandler, myEventHandler, true);
+ * 
+ * @param address               the I2C address of this module
+ * @param intPin                the GPIO pin which will receive the interrupt sinal if the FIFO buffer is set
+ * @param interruptHandler      pointer to the interrupt handler function (can be omitted)
+ * @param eventHandler          pointer to the event handler function (can be omitted)
+ * @param keyBeep               flag whether or not to use beeps on encoder/buttons
+ */
+LeoNerdEncoder::LeoNerdEncoder(uint8_t address, pin_t intPin, void (*interruptHandler)(void), void (*eventHandler)(LeoNerdEvent), bool keyBeep) {
     _address = address;
 
     if(keyBeep) {
         setKeyBeep(330, 100);
     }
     _intPin = intPin;
-    if(intPin != -1) {
+    if(intPin != 0) {
         pinMode(intPin, INPUT_PULLUP);
     }
     _interruptHandler = interruptHandler;
@@ -45,39 +58,45 @@ LeoNerdEncoder::LeoNerdEncoder(uint8_t address, uint16_t intPin, void (*interrup
 }
 
 /**
- * Destructor for clean up
+ * @brief Destructor for clean up
  */
 LeoNerdEncoder::~LeoNerdEncoder() {
-    if(_intPin != -1)
+    if(_intPin != 0)
         detachInterrupt(_intPin);
     #if !defined(__ESP32__) && !defined(ESP8266)
-    if (_I2CBus != nullptr) _I2CBus->end();
+    if (_I2CBus != nullptr) 
+        _I2CBus->end();
     #endif
 }
 
 /**
- * Initialize the encoder library
+ * @brief Initialize the encoder library
+ * 
+ * @param bus       instance of the I2C driver (either HW or SW I2C)
+ * @param initBus   flag which determines whether the bus must be initialized (i.e. begin() is being called)
  */
-void LeoNerdEncoder::internalBegin(I2CBusBase* bus) {
-    if (bus == nullptr) return;
+void LeoNerdEncoder::internalBegin(I2CBusBase* bus, bool initBus /* = true */) {
+    if (bus == nullptr) 
+        return;
 
     _I2CBus = bus;
-    _I2CBus->begin();
+    if(initBus)             // avoid re-init of I2C bus if initBus is false
+        _I2CBus->begin();
     _wheelPos = 0;
     _isBusy = false;
     flushFifo();
-    if(_intPin != -1 && _interruptHandler != NULL)
+    if(_intPin != 0 && _interruptHandler != nullptr)
         attachInterrupt(_intPin, _interruptHandler, FALLING);
     // set release mask on all buttons by default
     setButtonReleaseMask();
 }
 
 /**
- * Flushes the FIFO of the encoder
+ * @brief Flushes the FIFO of the encoder
  */
 void LeoNerdEncoder::flushFifo() {
     // flush FIFO, just in case
-    if(_intPin != -1) {
+    if(_intPin != 0) {
         while(digitalRead(_intPin) == LOW) {
             queryRegister(REG_EVENT);
         }
@@ -85,38 +104,66 @@ void LeoNerdEncoder::flushFifo() {
 }
 
 /**
- * Simple wrapper for service()
- * Call this from somwhere in your main loop()
+ * @brief   Checks is encoder is busy. This is the case if 
+ *          the @see service() method is being processed. 
+ * 
+ * @return true if is busy
  */
-void LeoNerdEncoder::loop() {
-    service();
+bool LeoNerdEncoder::busy(void) {
+    return _isBusy;
 }
 
 /**
- * Main routine for reading the events coming from the encoder
+ * @brief Simple wrapper for service()
+ *        Call this from somwhere in your main loop()
+ * 
+ * @param autoParse     @see service()
+ * 
+ * @returns @see service()
  */
-void LeoNerdEncoder::service() {
-    uint8_t buf[MAX_BUFFER];
-    if(_isBusy)
-        return;
-    memset(buf, 0xaa, MAX_BUFFER);
+uint8_t LeoNerdEncoder::loop(bool autoParse /*=true*/) {
+    return service(autoParse);
+}
+
+/**
+ * @brief Main routine for reading the events coming from the encoder
+ * 
+ * @param autoParse     flag which determines if parsing events is being done automatically (preset by default)
+ * 
+ * @returns the number of bytes received (0 if no data was pending)
+ */
+uint8_t LeoNerdEncoder::service(bool autoParse /*=true*/) {
+    if(busy())
+        return 0;
+    memset(_evtBuffer, 0xaa, MAX_BUFFER);
     interrupts();
     // if an interrupt pin is assigned and its state is HIGH, there are no events pending
-    if(_intPin != -1 && digitalRead(_intPin) == HIGH) {
-        return;
+    if(_intPin != 0 && digitalRead(_intPin) == HIGH) {
+        return 0;
     }
     _isBusy = true;
-    uint8_t cnt = queryRegister(REG_EVENT, buf, MAX_BUFFER);
-    for(int i=0; i<cnt; i++) {
-        // parse all data except 0xFF
-        if(buf[i] != 0xff)
-            parseData(REG_EVENT, buf[i]);
-    }
+    uint8_t cnt = queryRegister(REG_EVENT, _evtBuffer, MAX_BUFFER);
+    if(autoParse)
+        parseEvents(cnt);
     _isBusy = false;
+    return cnt;
 }
 
 /**
- * Set the button state according to the event received
+ * @brief Parses all events received from the FIFO buffer
+ * 
+ * @param cnt   the amount of data bytes read
+ */
+void LeoNerdEncoder::parseEvents(uint8_t cnt) {
+    for(int i=0; i<cnt; i++) {
+        // parse all data except 0xFF
+        if(_evtBuffer[i] != 0xff)
+            parseData(REG_EVENT, _evtBuffer[i]);
+    }
+}
+
+/**
+ * @brief Sets the button state according to the event received
  *
  * @param instance      the button instance
  * @param state         the new button state @see ButtonState
@@ -137,7 +184,7 @@ void LeoNerdEncoder::setButtonEvent(Button* instance, ButtonState state) {
     if(state == Held) {
         instance->setButtonState(LongClicked);
         instance->resetClickCount();
-        if(_eventHandler != NULL)
+        if(_eventHandler != nullptr)
             _eventHandler(LeoNerdEvent((EventType)instance->which(), instance->getButtonState()));
         instance->setLastButtonReleased(now);
     }
@@ -146,14 +193,14 @@ void LeoNerdEncoder::setButtonEvent(Button* instance, ButtonState state) {
             instance->resetClickCount();
             instance->setButtonState(Clicked);
             instance->setLastButtonReleased(now);
-            if(_eventHandler != NULL)
+            if(_eventHandler != nullptr)
                 _eventHandler(LeoNerdEvent((EventType)instance->which(), instance->getButtonState()));
         }
     }
 }
 
 /**
- * Parse the event and act sccordingly
+ * @brief Parse the event and act accordingly
  *
  * @param data      the event received
  */
@@ -178,12 +225,12 @@ void LeoNerdEncoder::parseEvent(uint8_t data) {
             break;
         case EVENT_WHEEL_DOWN:
             _wheelPos -= steps;
-            if(_eventHandler != NULL)
+            if(_eventHandler != nullptr)
                 _eventHandler(LeoNerdEvent(WheelEvent, LeftTurn));
             break;
         case EVENT_WHEEL_UP:
             _wheelPos += steps;
-            if(_eventHandler != NULL)
+            if(_eventHandler != nullptr)
                 _eventHandler(LeoNerdEvent(WheelEvent, RightTurn));
             break;
         case EVENT_BUTTON_RELEASE_WHEEL:
@@ -224,7 +271,7 @@ void LeoNerdEncoder::parseEvent(uint8_t data) {
             break;
         case EVENT_GPIO_CHANGE:
             _gpioVal = gpio;
-            if(_eventHandler != NULL)
+            if(_eventHandler != nullptr)
                 _eventHandler(LeoNerdEvent(GpioEvent, Open, _gpioVal));
             break;
         case 0xff:
@@ -235,7 +282,7 @@ void LeoNerdEncoder::parseEvent(uint8_t data) {
 }
 
 /**
- * Parse the data read according to the addressed register
+ * @brief Parse the data received according to the addressed register
  */
 void LeoNerdEncoder::parseData(uint8_t reg, uint8_t data) {
     switch(reg) {
@@ -274,7 +321,7 @@ void LeoNerdEncoder::parseData(uint8_t reg, uint8_t data) {
 }
 
 /**
- * Enables/Disables the double click feature on button
+ * @brief Enables/Disables the double click feature on button
  *
  * @param enabled       the enabled state
  * @param which         the button
@@ -290,9 +337,10 @@ void LeoNerdEncoder::setDoubleClickEnabled(bool enabled, uint8_t which) {
 }
 
 /**
- * Get the state of the button
+ * @brief Reads the state of a button
  *
  * @param which     the button @see Button
+ * 
  * @returns the current @see ButtonState
  */
 ButtonState LeoNerdEncoder::getButton(uint8_t which) {
@@ -318,7 +366,7 @@ ButtonState LeoNerdEncoder::getButton(uint8_t which) {
 }
 
 /**
- * Resets the state of the button
+ * @brief Resets the state of the button
  *
  * @param which     the button to reset @see Buttons
  */
@@ -332,7 +380,7 @@ void LeoNerdEncoder::resetButton(uint8_t which) {
 }
 
 /**
- * Resets the state of all buttons
+ * @brief Resets the state of all buttons
  */
 void LeoNerdEncoder::resetButtons() {
     _encoderButton.resetButtonState();
@@ -342,45 +390,37 @@ void LeoNerdEncoder::resetButtons() {
 }
 
 /**
- * Switch the given LED on or off
+ * @brief Switches the given LED on or off
  *
  * @param which     number of the LED 1 or 2
  * @param state     true (on) / false (off)
  */
 void LeoNerdEncoder::setLED(uint8_t which, bool state) {
-    if (_I2CBus == nullptr) return;
-
+    waitBusy();
     if(which >= 1 && which <= MAX_LEDS) {
-        waitBusy();
-        _I2CBus->beginTransmission(_address);
-        _I2CBus->write(which == 1 ? REG_LED1_PWM : REG_LED2_PWM);
-        _leds[which-1] = state ? _maxBrightness : 0;
-        _I2CBus->write(_leds[which-1]);
-        _I2CBus->endTransmission();
+        which--;
+        _leds[which] = state ? _maxBrightness : 0;
+        sendData(REG_LED1_PWM + which, _leds[which]);
     }
 }
 
 /**
- * Toggle the given LED on or off
+ * @brief Toggles the given LED
  *
  * @param which     number of the LED 1 or 2
  * @param state     true (on) / false (off)
  */
 void LeoNerdEncoder::toggleLED(uint8_t which) {
-    if (_I2CBus == nullptr) return;
-
+    waitBusy();
     if(which >= 1 && which <= MAX_LEDS) {
-        waitBusy();
-        _I2CBus->beginTransmission(_address);
-        _I2CBus->write(which == 1 ? REG_LED1_PWM : REG_LED2_PWM);
-        _leds[which-1] = _leds[which-1]==0 ? _maxBrightness : 0;
-        _I2CBus->write(_leds[which-1]);
-        _I2CBus->endTransmission();
+        which--;
+        _leds[which] = _leds[which]==0 ? _maxBrightness : 0;
+        sendData(REG_LED1_PWM + which, _leds[which]);
     }
 }
 
 /**
- * Set the given GPIO pin to either INPUT or OUTPUT
+ * @brief Sets the given GPIO pin to a certian mode
  *
  * @param which     number of the GPIO pin (0-3)
  * @param mode      INPUT or OUTPUT
@@ -391,213 +431,148 @@ void LeoNerdEncoder::setGPIOMode(uint8_t which, WiringPinMode mode)
 void LeoNerdEncoder::setGPIOMode(uint8_t which, int mode)
 #endif
 {
-    if (_I2CBus == nullptr) return;
-
     waitBusy();
-    _I2CBus->beginTransmission(_address);
-    _I2CBus->write(REG_GPIO_DIR);
     _gpioDir = (mode == INPUT) ? _gpioDir & ~(1<<which) : _gpioDir | (1<<which);
-    _I2CBus->write(_gpioDir &0x0f);
-    _I2CBus->endTransmission();
+    sendData(REG_GPIO_DIR, _gpioDir & 0x0f);
 }
 
 /**
- * Set the given GPIO pin state
+ * @brief Sets the given GPIO pin to a certain state
  *
  * @param which     number of the GPIO pin (0-3)
  * @param state     true (HIGH) / false (LOW)
  */
 void LeoNerdEncoder::setGPIO(uint8_t which, bool state){
-    if (_I2CBus == nullptr) return;
-
     waitBusy();
-    _I2CBus->beginTransmission(_address);
-    _I2CBus->write(REG_GPIO_IO);
     _gpioVal = (!state) ? _gpioVal & ~(1<<which) : _gpioVal | (1<<which);
-    _I2CBus->write(_gpioVal & 0x0f);
-    _I2CBus->endTransmission();
+    sendData(REG_GPIO_IO, _gpioVal & 0x0f);
 }
 
 /**
- * Get the given GPIO pin state
+ * @brief Gets the given GPIO pin state
  *
  * @param which     number of the GPIO pin (0-3)
+ * 
  * @returns true for HIGH, false for LOW
  */
 bool LeoNerdEncoder::getGPIO(uint8_t which) {
+    waitBusy();
     return (_gpioVal & (1<<which)) > 0;
 }
 
 /**
- * Play a tone
+ * @brief Plays a tone on the buzzer in units of 10 Hz
  *
  * @param frequency     the tone frequency
  * @param duration      the tone duration in milliseconds
  *
  */
 void LeoNerdEncoder::playTone(int frequency, int duration) {
-    if (_I2CBus == nullptr) return;
-
     waitBusy();
-    _I2CBus->beginTransmission(_address);
-    _I2CBus->write(REG_BEEP_TONE);
-    _I2CBus->write((uint8_t)frequency/10);
-    _I2CBus->endTransmission();
-
-    _I2CBus->beginTransmission(_address);
-    _I2CBus->write(REG_BEEP_DURATION);
-    _I2CBus->write((uint8_t)duration/10);
-    _I2CBus->endTransmission();
+    sendData(REG_BEEP_TONE,     (uint8_t)(frequency/10));
+    sendData(REG_BEEP_DURATION, (uint8_t)(duration/10));
 }
 
 /**
- * Play a frequency
+ * @brief Plays a frequency on the buzzer in units of 1 Hz
  *
- * @param frequency     the tone frequency
+ * @param frequency     the tone frequency as 16 bit value
  * @param duration      the tone duration in milliseconds
  *
  */
 void LeoNerdEncoder::playFrequency(int frequency, int duration) {
-    if (_I2CBus == nullptr) return;
-
     waitBusy();
-    _I2CBus->beginTransmission(_address);
-    _I2CBus->write(REG_BEEP_FREQH);
-    _I2CBus->write((uint8_t)(frequency >> 8));
-    _I2CBus->write((uint8_t)(frequency & 0xFF));
-    _I2CBus->endTransmission();
-
-    _I2CBus->beginTransmission(_address);
-    _I2CBus->write(REG_BEEP_DURATION);
-    _I2CBus->write((uint8_t)duration/10);
-    _I2CBus->endTransmission();
+    sendData(REG_BEEP_FREQH,    (uint8_t)(frequency >> 8), (uint8_t)(frequency & 0xFF));
+    sendData(REG_BEEP_DURATION, (uint8_t)(duration/10));
 }
 
 /**
- * Mute buzzer
+ * @brief Mutes the buzzer
  */
 void LeoNerdEncoder::muteTone() {
-    if (_I2CBus == nullptr) return;
-
     waitBusy();
-    _I2CBus->beginTransmission(_address);
-    _I2CBus->write(REG_BEEP_DURATION);
-    _I2CBus->write(0);
-    _I2CBus->endTransmission();
+    sendData(REG_BEEP_DURATION, 0);
 }
 
 /**
- * Set the KeyBeep frequency and duration
+ * @brief Sets the KeyBeep frequency and duration
  *
  * @param frequency     the tone frequency
  * @param duration      the tone duration in milliseconds
  *
  */
 void LeoNerdEncoder::setKeyBeep(int frequency, int duration) {
-    if (_I2CBus == nullptr) return;
-
     waitBusy();
-    _I2CBus->beginTransmission(_address);
-    _I2CBus->write(REG_BEEP_TONE);
-    _I2CBus->write((uint8_t)frequency/10);
-    _I2CBus->endTransmission();
+    sendData(REG_BEEP_TONE, (uint8_t)frequency/10);
     setKeyBeepDuration((uint8_t)duration/10);
     setKeyBeepMask();
 }
 
 /**
- * Set the KeyBeep duration
+ * @brief Sets the KeyBeep duration
+ * 
  * @param duration      the tone duration in milliseconds
  */
 void LeoNerdEncoder::setKeyBeepDuration(uint8_t duration) {
-    if (_I2CBus == nullptr) return;
-
     waitBusy();
-    _I2CBus->beginTransmission(_address);
-    _I2CBus->write(REG_KEYBEEP_DURATION);
-    _I2CBus->write(duration);
-    _I2CBus->endTransmission();
+    sendData(REG_KEYBEEP_DURATION, duration);
 }
 
 /**
- * Set the KeyBeep mask
+ * @brief Sets the KeyBeep mask
+ * 
  * @param mask      mask to set (which buttons will beep on action)
  */
 void LeoNerdEncoder::setKeyBeepMask(uint8_t mask) {
-    if (_I2CBus == nullptr) return;
-
     waitBusy();
-    _I2CBus->beginTransmission(_address);
-    _I2CBus->write(REG_KEYBEEP_MASK);
-    _I2CBus->write(mask);
-    _I2CBus->endTransmission();
+    sendData(REG_KEYBEEP_MASK, mask);
 }
 
 /**
- * Set debounce time
+ * @brief Sets the debounce time of buttons
+ * 
  * @param time      time in milliseconds (0-255)
  */
 void LeoNerdEncoder::setDebounceTime(uint8_t time) {
-    if (_I2CBus == nullptr) return;
-
     waitBusy();
-    _I2CBus->beginTransmission(_address);
-    _I2CBus->write(REG_DEBOUNCE_TIME);
-    _I2CBus->write(time);
-    _I2CBus->endTransmission();
+    sendData(REG_DEBOUNCE_TIME, time);
 }
 
 /**
- * Set the encoder button hold time for "Long Click"
+ * @brief Sets the encoder button hold time for "Long Click"
+ * 
  * @param time  time in centiseconds (0-255)
  */
 void LeoNerdEncoder::setButtonHoldTime(uint8_t time) {
-    if (_I2CBus == nullptr) return;
-
     waitBusy();
-    _I2CBus->beginTransmission(_address);
-    _I2CBus->write(REG_BTNHOLD_TIME);
-    _I2CBus->write(time);
-    _I2CBus->endTransmission();
+    sendData(REG_BTNHOLD_TIME, time);
 }
 
 /**
- * Set button release mask
+ * @brief Sets the release mask of buttons
+ * 
  * @param mask  button release mask @see LeoNerdEncoder.h
  */
 void LeoNerdEncoder::setButtonReleaseMask(uint8_t mask) {
-    if (_I2CBus == nullptr) return;
-
     waitBusy();
-    _I2CBus->beginTransmission(_address);
-    _I2CBus->write(REG_RELEASEMASK);
-    _I2CBus->write(mask);
-    _I2CBus->endTransmission();
+    sendData(REG_RELEASEMASK, mask);
 }
 
 /**
- * Enable the EEPROM for writing
+ * @brief Enables the EEPROM for writing
  *
  * This is a security measure to avoid accidentally overwriting the
  * EEPROM if there're some unwanted signals on the I2C bus.
  * This method is called for each setEepromValue() operation.
  */
 void LeoNerdEncoder::unlockEepromWrite() {
-    if (_I2CBus == nullptr) return;
-
-    _I2CBus->beginTransmission(_address);
-    _I2CBus->write(REG_EEPROM_UNLOCK);
-    _I2CBus->write(0x12);
-    _I2CBus->endTransmission();
-
-    _I2CBus->beginTransmission(_address);
-    _I2CBus->write(REG_EEPROM_UNLOCK);
-    _I2CBus->write(0x34);
-    _I2CBus->endTransmission();
+    waitBusy();
+    sendData(REG_EEPROM_UNLOCK, 0x12);
+    sendData(REG_EEPROM_UNLOCK, 0x34);
 }
 
 /**
- * Set EEPROM value
+ * @brief Programs a value in the EEPROM
  *
  * Be careful with this method and know what you're doing!
  * It may render your encoder unusable!
@@ -606,21 +581,16 @@ void LeoNerdEncoder::unlockEepromWrite() {
  * @param value     the value to be written
  */
 void LeoNerdEncoder::setEepromValue(uint8_t eep_adr, uint8_t value) {
-    if (_I2CBus == nullptr) return;
-
+    waitBusy();
     if(eep_adr >= REG_EEPROM && eep_adr <= REG_EEPROM_BTN_POLARITY) {
-        waitBusy();
         unlockEepromWrite();
-        _I2CBus->beginTransmission(_address);
-        _I2CBus->write(eep_adr);
-        _I2CBus->write(value);
-        _I2CBus->endTransmission();
+        sendData(eep_adr, value);
     }
 }
 
 
 /**
- * Read the RELEASEMASK
+ * @brief Reads the RELEASEMASK
  *
  * @returns the current value
  */
@@ -630,7 +600,7 @@ uint8_t LeoNerdEncoder::queryReleaseMask() {
 }
 
 /**
- * Read the KEYBEEP DURATION
+ * @brief Reads the KEYBEEP DURATION
  *
  * @returns the current value
  */
@@ -640,7 +610,7 @@ uint8_t LeoNerdEncoder::queryKeyBeepDuration() {
 }
 
 /**
- * Read the KEYBEEP MASK
+ * @brief Reads the KEYBEEP MASK
  *
  * @returns the current value
  */
@@ -650,7 +620,7 @@ uint8_t LeoNerdEncoder::queryKeyBeepMask() {
 }
 
 /**
- * Read the BEEP DURATION
+ * @brief Reads the BEEP DURATION
  *
  * @returns the current value
  */
@@ -660,7 +630,7 @@ uint8_t LeoNerdEncoder::queryBeepDuration() {
 }
 
 /**
- * Read the BEEP TONE
+ * @brief Reads the BEEP TONE
  *
  * @returns the current value
  */
@@ -670,7 +640,7 @@ uint8_t LeoNerdEncoder::queryBeepTone() {
 }
 
 /**
- * Read the PWM value for LED1
+ * @brief Reads the PWM value for LED1
  *
  * @returns the current value
  */
@@ -680,7 +650,7 @@ uint8_t LeoNerdEncoder::queryLed1Pwm() {
 }
 
 /**
- * Read the PWM value for LED2
+ * @brief Reads the PWM value for LED2
  *
  * @returns the current value
  */
@@ -690,7 +660,7 @@ uint8_t LeoNerdEncoder::queryLed2Pwm() {
 }
 
 /**
- * Read the GPIO DIRECTION settings
+ * @brief Reads the GPIO DIRECTION settings
  *
  * @returns the current value
  */
@@ -700,7 +670,7 @@ uint8_t LeoNerdEncoder::queryGpioDir() {
 }
 
 /**
- * Read the GPIO states
+ * @brief Reads the GPIO states
  *
  * @returns the current value
  */
@@ -710,7 +680,7 @@ uint8_t LeoNerdEncoder::queryGpioIo() {
 }
 
 /**
- * Read the GPIO PULLUP settings
+ * @brief Reads the GPIO PULLUP settings
  *
  * @returns the current value
  */
@@ -720,7 +690,7 @@ uint8_t LeoNerdEncoder::queryGpioPullup() {
 }
 
 /**
- * Read the GPIO EVENTMASK settings
+ * @brief Reads the GPIO EVENTMASK settings
  *
  * @returns the current value
  */
@@ -730,7 +700,7 @@ uint8_t LeoNerdEncoder::queryGpioEventMask() {
 }
 
 /**
- * Query the ENCODER ADDRESS
+ * @brief Queries the ENCODER ADDRESS
  *
  * @returns the configured address
  */
@@ -740,7 +710,7 @@ uint8_t LeoNerdEncoder::queryEncoderAddress() {
 }
 
 /**
- * Read the OPTIONS register
+ * @brief Reads the OPTIONS register
  *
  * @returns the options as set in EEPROM
  */
@@ -750,7 +720,7 @@ uint8_t LeoNerdEncoder::queryOptions() {
 }
 
 /**
- * Read the DEBOUNCE TIME
+ * @brief Reads the DEBOUNCE TIME
  *
  * @returns the default time
  */
@@ -760,7 +730,7 @@ uint8_t LeoNerdEncoder::queryDebounceTime() {
 }
 
 /**
- * Read the HOLD TIME
+ * @brief Reads the HOLD TIME
  *
  * @returns the default time
  */
@@ -770,61 +740,29 @@ uint8_t LeoNerdEncoder::queryHoldTime() {
 }
 
 /**
- * Read the BUTTON TO GPIO MAPPING
+ * @brief Reads the BUTTON TO GPIO MAPPING
  *
  * @returns the current GPIO ports it's mapped to
  */
 uint8_t LeoNerdEncoder::queryButtonMapping(Buttons button) {
     waitBusy();
     uint8_t stat = queryRegister(REG_EEPROM_BTN_MAPPING);
-    switch(button) {
-        case WheelButton:
-            stat = (stat & 1);
-            break;
-        case MainButton:
-            stat = (stat & 2) >> 1;
-            break;
-        case LeftButton:
-            stat = (stat & 4) >> 2;
-            break;
-        case RightButton:
-            stat = (stat & 8) >> 3;
-            break;
-        default:
-        stat = 0;
-    }
-    return stat;
+    return assignButton(button, stat);
 }
 
 /**
- * Read the BUTTON TO GPIO MAPPING POLARITY
+ * @brief Reads the BUTTON TO GPIO MAPPING POLARITY
  *
  * @returns     the current GPIO ports it's mapped to
  */
 uint8_t LeoNerdEncoder::queryButtonMappingPolarity(Buttons button) {
     waitBusy();
     uint8_t stat = queryRegister(REG_EEPROM_BTN_POLARITY);
-    switch(button) {
-        case WheelButton:
-            stat = (stat & 1);
-            break;
-        case MainButton:
-            stat = (stat & 2) >> 1;
-            break;
-        case LeftButton:
-            stat = (stat & 4) >> 2;
-            break;
-        case RightButton:
-            stat = (stat & 8) >> 3;
-            break;
-        default:
-        stat = 0;
-    }
-    return stat;
+    return assignButton(button, stat);
 }
 
 /**
- * Read the WHEEL ACCELERATION time
+ * @brief Reads the WHEEL ACCELERATION time
  *
  * @returns the default time in ms
  */
@@ -834,7 +772,7 @@ uint8_t LeoNerdEncoder::queryWheelAcceleration() {
 }
 
 /**
- * Read the WHEEL DECELERATION time
+ * @brief Reads the WHEEL DECELERATION time
  *
  * @returns the default time in ms
  */
@@ -844,7 +782,7 @@ uint8_t LeoNerdEncoder::queryWheelDeceleration() {
 }
 
 /**
- * Read the VERSION info
+ * @brief Reads the firmware VERSION info
  *
  * @returns the current value
  */
@@ -854,7 +792,8 @@ uint8_t LeoNerdEncoder::queryVersion() {
 }
 
 /**
- * Query the value of the given (FIFO buffered) register
+ * @brief Queries the value of the given (FIFO buffered) register
+ * 
  * @param reg       the register in charge
  * @param buffer    the pointer to the result buffer
  * @param size      the max. size of the result buffer
@@ -862,18 +801,14 @@ uint8_t LeoNerdEncoder::queryVersion() {
  * @returns the number of bytes received from FIFO; buffer gets filled accordingly
  */
 uint8_t LeoNerdEncoder::queryRegister(uint8_t reg, uint8_t* buffer, uint8_t size) {
-    if (_I2CBus == nullptr) return 0;
+    if (_I2CBus == nullptr) 
+        return 0;
 
-    uint8_t stat = 0;
-    do {
-        _I2CBus->beginTransmission(_address);
-        _I2CBus->write(reg);
-        stat = _I2CBus->endTransmission();
-    } while(stat > 1);
+    uint8_t stat = sendRequest(reg);
     if(stat == 0) {
         uint8_t cnt = _I2CBus->requestFrom(_address, size);
         while(!_I2CBus->available())
-            delayMicroseconds(10);
+            ;
         uint8_t ndx = 0;
         while(ndx < cnt) {
             uint8_t response = _I2CBus->read();
@@ -887,22 +822,100 @@ uint8_t LeoNerdEncoder::queryRegister(uint8_t reg, uint8_t* buffer, uint8_t size
 }
 
 /**
- * Query the value of the given register
+ * @brief Queries the value of the given register
+ * 
  * @param reg   the register in charge
  *
- * @returns the response read
+ * @returns the response received
  */
 uint8_t LeoNerdEncoder::queryRegister(uint8_t reg) {
-    if (_I2CBus == nullptr) return 0;
+    if (_I2CBus == nullptr) 
+        return 0;
 
+    sendRequest(reg);
+    _I2CBus->requestFrom(_address, (uint8_t)1);
+    while(!_I2CBus->available())
+        ;
+    return _I2CBus->read();
+}
+
+/**
+ * @brief Waits until the busy flag gets released
+ */
+void LeoNerdEncoder::waitBusy(void) {
+    while(busy()) {
+    }
+}
+
+/**
+ * @brief Sends a register read request. Device will respond with data.
+ * 
+ * @param reg       the register to read
+ * 
+ * @returns the status of the transmission operation
+*/
+uint8_t LeoNerdEncoder::sendRequest(uint8_t reg) {
+    if (_I2CBus == nullptr) 
+        return 0;
     uint8_t stat = 0;
     do {
         _I2CBus->beginTransmission(_address);
         _I2CBus->write(reg);
         stat = _I2CBus->endTransmission();
     } while(stat > 1);
-    _I2CBus->requestFrom(_address, (uint8_t)1);
-    while(!_I2CBus->available())
-        delayMicroseconds(10);
-    return _I2CBus->read();
+    return stat;
+}
+
+/**
+ * @brief Sends one byte of data to the specified register
+ * 
+ * @param reg       the register to write to
+ * @param data      the (8-bit) data to be written
+ * 
+ * @returns the status of the transmission operation
+ */
+uint8_t LeoNerdEncoder::sendData(uint8_t reg, uint8_t data) {
+    if (_I2CBus == nullptr) 
+        return 0;
+    _I2CBus->beginTransmission(_address);
+    _I2CBus->write(reg);
+    _I2CBus->write((uint8_t)data);
+    return _I2CBus->endTransmission();
+}
+
+/**
+ * @brief Sends two bytes of data to the specified register
+ * 
+ * @param reg       the register to write to
+ * @param data1     the first byte to be written
+ * @param data2     the second byte to be written
+ * 
+ * @returns the status of the transmission operation
+ */
+uint8_t LeoNerdEncoder::sendData(uint8_t reg, uint8_t data1, uint8_t data2) {
+    if (_I2CBus == nullptr) 
+        return 0;
+    _I2CBus->beginTransmission(_address);
+    _I2CBus->write(reg);
+    _I2CBus->write((uint8_t)data1);
+    _I2CBus->write((uint8_t)data2);
+    return _I2CBus->endTransmission();
+}
+
+/**
+ * @brief Assigns button status (helper)
+*/
+uint8_t assignButton(uint8_t button, uint8_t stat) {
+    switch(button) {
+        case WheelButton:
+            return (stat & 1);
+        case MainButton:
+            return (stat & 2) >> 1;
+        case LeftButton:
+            return (stat & 4) >> 2;
+        case RightButton:
+            return (stat & 8) >> 3;
+        default:
+            return 0;
+    }
 }

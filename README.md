@@ -113,7 +113,20 @@ If you have another I2C device connected to your MCU which comes with such pull-
 
 ## Change History
 
-+ added conditional compilation for STM32F1xx. Using a STM32F1 MCU under the Maple framework (*board_build.core = maple*), needs adding the definition **-D \_\_LIBMAPLE\_\_** to make the library compile properly
+**2022-04-10**
+
++ changed interrupt pin type to *pin_t* for use with STM32 Core (uint8_t on Arduino, uint32_t on STM32 Core)
++ moved all files into **src** folder and removed **include** folder (for easier debugging)
++ changed signature of *loop()* and *service()* and added optional **autoParse** flag
++ added *parseEvents()* method to be called from outside if *loop()* or *service()* have been called with *autoParse = false*
++ changed all occurances of *NULL* with *nullptr* to avoid compiler ambiguities
++ refactored library to reduce code and enhance readability; Added *sendData()* function for sending 1 or 2 bytes to the OLED Module and *sendRequest()* function for reading register values 
++ added **USE_SW_TWI** flag (needed for STM32 Core) if you'd like to use software instead of hardware TWI/I2C. You'll need to include the [SoftWire](https://github.com/stevemarple/SoftWire.git) (which also requires the [AsyncDelay](https://github.com/stevemarple/AsyncDelay.git)) library and set up an instance of SoftWire, which then needs to be passed to the library in the *begin()* method.  
+
+**2022-03-20**
+
++ added conditional compilation for STM32F1xx. Using a STM32F1 MCU under the Maple framework (*board_build.core = maple*), needs adding the definition
+**-D \_\_LIBMAPLE\_\_** to make the library compile properly
 + added *queryOptions()* method to read out the Options register
 + added encoder wheel acceleration handling as used in GMagicians alternative firmware version
 + updated basic example (added playing tune, decreased the memory footprint)
