@@ -121,7 +121,7 @@ If you have another I2C device connected to your MCU which comes with such pull-
 + added *parseEvents()* method to be called from outside if *loop()* or *service()* have been called with *autoParse = false*
 + changed all occurances of *NULL* with *nullptr* to avoid compiler ambiguities
 + refactored library to reduce code and enhance readability; Added *sendData()* function for sending 1 or 2 bytes to the OLED Module and *sendRequest()* function for reading register values 
-+ added **USE_SW_TWI** flag (needed for STM32 Core) if you'd like to use software instead of hardware TWI/I2C. You'll need to include the [SoftWire](https://github.com/stevemarple/SoftWire.git) (which also requires the [AsyncDelay](https://github.com/stevemarple/AsyncDelay.git)) library and set up an instance of SoftWire, which then needs to be passed to the library in the *begin()* method.  
++ added **USE_SW_TWI** flag (needed for Arduino Core STM32) if you'd need to use software instead of hardware TWI/I2C. You'll need to include my [SoftWire](https://github.com/technik-gegg/SoftWireSTM32.git) library and set up an instance of SoftWire, which then needs to be passed to the library in the *begin()* method.  
 
 **2022-03-20**
 
