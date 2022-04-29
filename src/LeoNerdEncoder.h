@@ -191,7 +191,7 @@ public:
     void            setMaxBrightness(uint8_t brightness) { _maxBrightness = brightness; }
     void            setLED(uint8_t which, bool state);
     void            toggleLED(uint8_t which);
-#if defined(__STM32F1XX) && defined(__LIBMAPLE__)
+#if defined(__STM32F1__) && defined(__LIBMAPLE__)
     void            setGPIOMode(uint8_t which, WiringPinMode mode);
 #else
     void            setGPIOMode(uint8_t which, int mode);
